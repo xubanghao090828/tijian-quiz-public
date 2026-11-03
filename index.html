@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#101114">
+  <meta name="description" content="数控题库刷题应用，支持搜题、随机模拟、离线续做、历史答题和逐题解析。">
+  <title>题间 · 刷题练习室</title>
+  <link rel="manifest" href="manifest.webmanifest?v=2">
+  <link rel="icon" href="icon.svg?v=2" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="redesign.css?v=20261103-zzz12">
+  <link rel="stylesheet" href="terminal.css?v=20261103-zzz12">
+  <link rel="stylesheet" href="arcade.css?v=20261103-zzz12">
+</head>
+<body data-view="home">
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="#home" aria-label="题间首页"><span class="brand-mark">题</span><span>题间<small>CNC · QUIZ STATION</small></span></a>
+      <div class="nav-label">主菜单 <b>MENU / 06</b></div>
+      <nav aria-label="主导航">
+        <button class="nav-item active" data-view="home"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10H3z"/><path d="M9 20v-7h6v7"/></svg></span> 总览</button>
+        <button class="nav-item" data-view="practice"><span><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="2.5" width="19" height="19" rx="5"/><path d="m10 7 7 5-7 5z"/></svg></span> 开始刷题</button>
+        <button class="nav-item" data-view="mistakes"><span><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="2.5" width="19" height="19" rx="5"/><path d="m8 8 8 8m0-8-8 8"/></svg></span> 错题本 <em id="mistake-count">0</em></button>
+        <button class="nav-item" data-view="library"><span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 6 6"/></svg></span> 我的题库</button>
+        <button class="nav-item" data-view="history"><span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg></span> 历史答题</button>
+        <button class="nav-item" data-view="sync"><span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="9"/><path d="M12 1v2m0 18v2M1 12h2m18 0h2"/></svg></span> 我的空间</button>
+      </nav>
+      <div class="sidebar-bottom"><div class="sidebar-note"><span class="note-spark">● OFFLINE READY</span><strong>进度已记录</strong><p>离线刷题，联网后同步。</p></div><div class="side-footer">TIJIAN / STUDY SYSTEM</div></div>
+    </aside>
+    <main class="main">
+      <header class="topbar"><div class="breadcrumb"><span class="crumb-line"></span><span class="breadcrumb-label">题间 / 学习终端</span><span>/</span><strong id="page-name">总览</strong></div><div class="topbar-status"><span class="status-light"></span>离线可用 <i></i><span class="today" id="today-label"></span></div></header>
+      <div id="app" aria-live="polite"></div>
+    </main>
+  </div>
+  <input id="file-input" type="file" accept=".xlsx,.xls,.csv,.json,application/json" hidden>
+  <script src="xlsx.full.min.js"></script>
+  <script src="explain.js"></script>
+  <script src="questions.js"></script>
+  <script src="identity.js"></script>
+  <script src="app.js?v=20261103-zzz12"></script>
+  <script src="sync.js?v=20261103-zzz12"></script>
+</body>
+</html>
+
+
+
+
+
+
+
