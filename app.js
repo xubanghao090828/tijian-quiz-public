@@ -6,16 +6,16 @@ const DEMO=[
   {id:'d5',question:'若一组数据为 2、4、6、8，它们的平均数是多少？',options:['4','5','6','7'],answer:1,explanation:'(2+4+6+8)÷4=5。',category:'示例题库'}
 ];
 const KEY=window.TIJIAN_STATE_KEY||'tijian-v1';
-let state=load(); let view='home'; let mode='order'; let session=[]; let answers=[]; let index=0; let selected=null; let sessionCorrect=0; let currentSession=null; let historySessionId=null; let historyQuestionIndex=null; let searchQuery=''; let searchType='全部题型'; let searchPage=0; let libraryDetailId=null; let mistakeSearchQuery=''; let mistakeDetailId=null; let importError=''; let sessionError=''; let category='全部分类'; let questionType='全部题型'; let homeTab='schedule'; let homePeriod='today'; let navOpen=false; let lastMotionKey=null; let answerMotion=false; let navMotion=false; let lastResultAnimatedId=null; let hapticsEnabled=localStorage.getItem('tijian-haptics')!=='off'; let motionEnabled=localStorage.getItem('tijian-motion')!=='off'; let fontSize=['standard','large','extra'].includes(localStorage.getItem('tijian-font-size'))?localStorage.getItem('tijian-font-size'):'standard';
+let state=load(); let view='home'; let mode='order'; let session=[]; let answers=[]; let index=0; let selected=null; let sessionCorrect=0; let currentSession=null; let historySessionId=null; let historyQuestionIndex=null; let searchQuery=''; let searchType='全部题型'; let searchPage=0; let libraryDetailId=null; let mistakeSearchQuery=''; let mistakeDetailId=null; let importError=''; let importStatus=''; let pastedQuestions=''; let importDraft=null; let importBusy=false; let sessionError=''; let category='全部分类'; let questionType='全部题型'; let homeTab='schedule'; let homePeriod='today'; let navOpen=false; let lastMotionKey=null; let answerMotion=false; let navMotion=false; let lastResultAnimatedId=null; let hapticsEnabled=localStorage.getItem('tijian-haptics')!=='off'; let motionEnabled=localStorage.getItem('tijian-motion')!=='off'; let fontSize=['standard','large','extra'].includes(localStorage.getItem('tijian-font-size'))?localStorage.getItem('tijian-font-size'):'standard';
 function applyPreferences(){document.documentElement.dataset.motion=motionEnabled?'on':'off';document.body.dataset.fontSize=fontSize}
 applyPreferences();
-function load(){try{const s=JSON.parse(localStorage.getItem(KEY));return {custom:Array.isArray(s.custom)?s.custom:[],attempts:s.attempts||{},mistakes:s.mistakes||{},marked:s.marked||{},events:s.events,cursor:s.cursor||0,sessions:Array.isArray(s.sessions)?s.sessions.map(record=>({...record,dirty:record.dirty!==false})):[],sessionCursor:s.sessionCursor||0}}catch{return {custom:[],attempts:{},mistakes:{},marked:{},events:[],cursor:0,sessions:[],sessionCursor:0}}}
+function load(){try{const s=JSON.parse(localStorage.getItem(KEY));return {added:Array.isArray(s.added)?s.added:[],custom:Array.isArray(s.custom)?s.custom:[],attempts:s.attempts||{},mistakes:s.mistakes||{},marked:s.marked||{},events:s.events,cursor:s.cursor||0,sessions:Array.isArray(s.sessions)?s.sessions.map(record=>({...record,dirty:record.dirty!==false})):[],sessionCursor:s.sessionCursor||0}}catch{return {added:[],custom:[],attempts:{},mistakes:{},marked:{},events:[],cursor:0,sessions:[],sessionCursor:0}}}
 function save(){localStorage.setItem(KEY,JSON.stringify(state))}
 let enrichedCustomSource=null,enrichedCustomCache=null;
 function bank(){
   const bundled=window.BUNDLED_QUESTIONS||DEMO;
-  if(!state.custom.length)return bundled;
-  if(enrichedCustomSource===state.custom)return enrichedCustomCache;
+  if(!state.custom.length)return bundled.concat(state.added);
+  if(enrichedCustomSource===state.custom)return enrichedCustomCache.concat(state.added);
   const byQuestionAndAnswer=new Map(bundled.map(q=>[`${q.question}|${q.options[q.answer]}`,q]));
   enrichedCustomCache=state.custom.map(q=>{
     const match=byQuestionAndAnswer.get(`${q.question}|${q.options?.[q.answer]}`);
@@ -26,7 +26,7 @@ function bank(){
       reviewNote:q.reviewNote||match.reviewNote};
   });
   enrichedCustomSource=state.custom;
-  return enrichedCustomCache;
+  return enrichedCustomCache.concat(state.added);
 }
 function filtered(){return bank().filter(q=>(category==='全部分类'||q.category===category)&&(questionType==='全部题型'||q.type===questionType))}
 function countAttempts(){return Object.values(state.attempts).reduce((n,x)=>n+x.total,0)}
@@ -168,7 +168,7 @@ function libraryView(){
   if(libraryDetailId){const q=bank().find(item=>item.id===libraryDetailId);if(q){const a=state.attempts[q.id];return `<div class="detail-head"><button class="secondary" data-library-back>← 返回搜题</button><span>${esc(q.category||'未分类')} · ${esc(q.type||'单选题')}</span></div><div class="card panel review-detail"><h2>${esc(q.question)}</h2>${questionReview(q,null)}<p class="muted">${a?`你已答过 ${a.total} 次，答对 ${a.correct} 次。`:'你还没有答过这道题。'}</p></div>`}}
   const query=searchQuery.trim().toLowerCase(),matches=bank().filter(q=>(searchType==='全部题型'||q.type===searchType)&&(!query||[q.question,...q.options,q.category,q.id].some(text=>String(text||'').toLowerCase().includes(query))));
   const pages=Math.max(1,Math.ceil(matches.length/30));searchPage=Math.min(searchPage,pages-1);const shown=matches.slice(searchPage*30,(searchPage+1)*30);
-  return `<div class="hero"><div><div class="eyebrow">QUESTION LIBRARY</div><h1>题库搜题</h1><p>输入题干、选项或知识点，找到后点开查看答案和解析。</p></div></div><div class="card panel search-panel"><form class="question-search-form"><label for="question-search">搜索题目</label><div><input id="question-search" name="query" type="search" value="${esc(searchQuery)}" placeholder="例如：G代码、退火、尺寸公差" autocomplete="off"><button class="primary" type="submit">搜题</button></div></form><div class="search-types">${['全部题型','单选题','判断题'].map(type=>`<button class="pill ${searchType===type?'selected':''}" data-search-type="${type}">${type}</button>`).join('')}</div><p class="search-count">找到 ${matches.length} 道题${query?` · “${esc(searchQuery)}”`:''}</p></div><div class="search-results">${shown.length?shown.map(q=>`<button class="card search-result" data-library-question="${esc(q.id)}"><span class="search-result-meta">${esc(q.category||'未分类')} · ${esc(q.type||'单选题')}</span><strong>${esc(q.question)}</strong><span>查看答案和解析 →</span></button>`).join(''):`<div class="card empty"><h2>没有找到相关题目</h2><p>试试更短的关键词，或切换题型。</p></div>`}</div>${matches.length>30?`<div class="pager"><button class="secondary" data-search-page="${searchPage-1}" ${searchPage===0?'disabled':''}>← 上一页</button><span>${searchPage+1} / ${pages}</span><button class="secondary" data-search-page="${searchPage+1}" ${searchPage===pages-1?'disabled':''}>下一页 →</button></div>`:''}<div class="card panel import-panel"><h2>${state.custom.length?'已导入新题库':'数控题库已就绪'}</h2><p class="muted">${state.custom.length?`当前使用新导入的 ${state.custom.length} 道题。清除后可恢复内置题库。`:`内置 ${bank().length} 道题。`}</p><div class="upload"><strong>导入新版 Excel、CSV 或 JSON</strong><p>支持“教之初”题库格式和常规题目表格。</p><button class="primary" id="upload-button">选择文件</button></div>${importError?`<div class="error">${esc(importError)}</div>`:''}${state.custom.length?`<div class="button-row" style="margin-top:20px"><button class="secondary" data-clear>恢复内置题库</button></div>`:''}</div>`
+  return `<div class="hero"><div><div class="eyebrow">QUESTION LIBRARY</div><h1>题库搜题</h1><p>输入题干、选项或知识点，找到后点开查看答案和解析。</p></div></div><div class="card panel search-panel"><form class="question-search-form"><label for="question-search">搜索题目</label><div><input id="question-search" name="query" type="search" value="${esc(searchQuery)}" placeholder="例如：G代码、退火、尺寸公差" autocomplete="off"><button class="primary" type="submit">搜题</button></div></form><div class="search-types">${['全部题型','单选题','判断题'].map(type=>`<button class="pill ${searchType===type?'selected':''}" data-search-type="${type}">${type}</button>`).join('')}</div><p class="search-count">找到 ${matches.length} 道题${query?` · “${esc(searchQuery)}”`:''}</p></div>${importPanel()}<div class="search-results">${shown.length?shown.map(q=>`<button class="card search-result" data-library-question="${esc(q.id)}"><span class="search-result-meta">${esc(q.category||'未分类')} · ${esc(q.type||'单选题')}</span><strong>${esc(q.question)}</strong><span>查看答案和解析 →</span></button>`).join(''):`<div class="card empty"><h2>没有找到相关题目</h2><p>试试更短的关键词，或切换题型。</p></div>`}</div>${matches.length>30?`<div class="pager"><button class="secondary" data-search-page="${searchPage-1}" ${searchPage===0?'disabled':''}>← 上一页</button><span>${searchPage+1} / ${pages}</span><button class="secondary" data-search-page="${searchPage+1}" ${searchPage===pages-1?'disabled':''}>下一页 →</button></div>`:''}`
 }
 function historyView(){
   const record=state.sessions.find(s=>s.id===historySessionId);
@@ -284,69 +284,87 @@ function bind(){
   document.querySelectorAll('[data-history-step]').forEach(b=>b.onclick=()=>{historyQuestionIndex=Number(b.dataset.historyStep);render();window.scrollTo({top:0,behavior:'smooth'})});
   document.querySelectorAll('[data-remove]').forEach(b=>b.onclick=()=>{delete state.mistakes[b.dataset.remove];delete state.marked[b.dataset.remove];if(mistakeDetailId===b.dataset.remove)mistakeDetailId=null;save();window.TijianSync?.record(b.dataset.remove,'remove',0,0,'remove');render()});
   document.querySelector('#upload-button')?.addEventListener('click',()=>document.querySelector('#file-input').click());
+  document.querySelector('#paste-import')?.addEventListener('submit',event=>{
+    event.preventDefault();
+    if(importBusy)return;
+    const value=new FormData(event.currentTarget).get('questions').trim();
+    pastedQuestions=value;
+    if(value) previewImport(value,/^[{\[]/.test(value)?'json':'txt');
+  });
+  document.querySelector('[data-confirm-import]')?.addEventListener('click',confirmImport);
+  document.querySelector('[data-cancel-import]')?.addEventListener('click',()=>{importDraft=null;importError='';render()});
   document.querySelector('[data-clear]')?.addEventListener('click',()=>{state.custom=[];save();libraryDetailId=null;render()})
 }
 function bindFilters(){document.querySelectorAll('[data-category]').forEach(b=>b.onclick=()=>{category=b.dataset.category;render()});document.querySelectorAll('[data-type]').forEach(b=>b.onclick=()=>{questionType=b.dataset.type;render()})}
 function answer(i){if(answers[index]!==null)return;const q=session[index];haptic(i===q.answer?'correct':'wrong');answerMotion=true;answers[index]=i;selected=i;const a=state.attempts[q.id]||{total:0,correct:0};a.total++;if(i===q.answer){a.correct++;sessionCorrect++;if(mode==='wrong'&&!state.marked[q.id])delete state.mistakes[q.id]}else state.mistakes[q.id]=true;state.attempts[q.id]=a;persistSession();window.TijianSync?.record(q.id,'answer',1,i===q.answer?1:0,i===q.answer&&mode==='wrong'&&!state.marked[q.id]?'remove':i===q.answer?null:'add');render()}
-function get(row,names){const keys=Object.keys(row);for(const name of names){const key=keys.find(k=>k.trim().toLowerCase()===name.toLowerCase());if(key!==undefined&&row[key]!==undefined&&row[key]!==null)return String(row[key]).trim()}return ''}
-function normalize(rows){
-  const out=[];
-  rows.forEach((r,n)=>{
-    const question=get(r,['题目','问题','题干','question','Question']);
-    if(!question)return;
-    const declaredType=get(r,['题型','类型','type']);
-    let options=[...'ABCDEFGH'].map((letter,i)=>get(r,[letter,`选项${letter}`,`选项${i+1}`,`option${letter}`,`option_${letter}`]));
-    if(options.every(x=>!x)){
-      const raw=get(r,['选项','options','Choices']);
-      options=raw.split(/\s*[|｜;；]\s*/).map(x=>x.replace(/^[A-H][.、．:]\s*/i,'')).filter(Boolean);
-    }
-    if(declaredType==='判断题'&&options.length<2)options=['正确','错误'];
-    options=options.filter(Boolean);
-    if(options.length<2&&declaredType==='单选题'){
-      const existing=(window.BUNDLED_QUESTIONS||[]).find(q=>q.question===question);
-      if(existing)options=existing.options.slice(existing.answer).concat(existing.options.slice(0,existing.answer));
-    }
-    if(options.length<2)return;
-    const raw=get(r,['答案','正确答案','参考答案','answer','Answer']);
-    let answer=options.findIndex(x=>x===raw);
-    if(answer<0){
-      if(raw==='√'||/^(正确|对|true)$/i.test(raw))answer=0;
-      else if(raw==='×'||/^(错误|错|false)$/i.test(raw))answer=1;
-      else{
-        const letter=raw.match(/^[A-H](?:[.、．\s]|$)/i);
-        if(letter)answer=letter[0].toUpperCase().charCodeAt(0)-65;
-        else if(/^[1-8]$/.test(raw))answer=Number(raw)-1;
-      }
-    }
-    if(answer<0||answer>=options.length)return;
-    const type=declaredType||((options.length===2&&options[0]==='正确'&&options[1]==='错误')?'判断题':'单选题');
-    const optionExplanations=type==='单选题'?options.map((_,i)=>get(r,[`选项${'ABCDEFGH'[i]}解析`])):[];
-    const item={id:'u'+n+'-'+question.slice(0,15),question,options,answer,type,explanation:get(r,['整体解析','解析','答案解析','解释','explanation']),category:get(r,['分类','科目','章节','知识点','category'])||'我的题库'};
-    if(optionExplanations.length&&optionExplanations.every(Boolean))item.optionExplanations=optionExplanations;
-    const reviewNote=get(r,['待核查']);if(reviewNote)item.reviewNote=reviewNote;
-    out.push(item);
-  });
-  return out;
-}
 function parseNative(rows,sheet){const out=[];rows.forEach((row,n)=>{const type=String(row[11]||'').trim();if(!['单选题','判断题'].includes(type))return;const question=String(row[1]||'').trim();if(!question)return;let options,answer;if(type==='判断题'){const truth=String(row[10]||'').trim();if(!['√','×'].includes(truth))return;options=['正确','错误'];answer=truth==='√'?0:1}else{const raw=row.slice(2,10).map(v=>String(v??'').trim()).filter(Boolean);if(raw.length<2)return;const offset=(n*7+3)%raw.length;options=raw.slice(offset).concat(raw.slice(0,offset));answer=options.indexOf(raw[0])}out.push({id:`u-${sheet}-${n}`,question,options,answer,explanation:String(row[19]||'').trim(),category:String(row[36]||'').trim()||'未分类',type})});return out}
-document.querySelector('#file-input').addEventListener('change',async e=>{
-  const file=e.target.files?.[0];if(!file)return;
+function importPanel(){
+  const draft=importDraft;
+  const preview=draft?`<section class="import-preview" aria-label="导入预览">
+    <p><strong>可新增 ${draft.items.length} 道</strong> · 重复 ${draft.duplicates} 道 · 待修正 ${draft.issues.length} 处</p>
+    ${draft.items.length?`<ul>${draft.items.slice(0,5).map(q=>`<li>${esc(q.question)}<br><small>答案：${esc(q.options[q.answer])}</small></li>`).join('')}</ul>`:''}
+    ${draft.issues.length?`<details open><summary>查看待修正内容</summary><ul>${draft.issues.slice(0,50).map(issue=>`<li>${esc(issue)}</li>`).join('')}${draft.issues.length>50?`<li>还有 ${draft.issues.length-50} 处问题</li>`:''}</ul></details>`:''}
+    <div class="button-row"><button class="primary" data-confirm-import ${draft.items.length?'':'disabled'}>确认新增</button><button class="secondary" data-cancel-import>取消</button></div>
+  </section>`:'';
+  return `<section class="card panel import-panel"><h2>添加题目</h2>
+    <p class="muted">支持单选题和判断题。确认后追加到当前题库，文件在本机读取。</p>
+    <div class="button-row"><button class="primary" id="upload-button" ${importBusy?'disabled':''}>${importBusy?'正在读取…':'选择文件'}</button><a class="secondary" href="question-template.csv" download>下载表格模板</a></div>
+    <p class="muted">Excel（.xlsx、.xls）、CSV、TSV、JSON 或 TXT，兼容教之初格式。通用表格可用「题干、A、B、答案」，也可加上题型、分类和解析。</p>
+    <details ${pastedQuestions?'open':''}><summary>粘贴题目或 JSON</summary>
+      <form id="paste-import"><label for="pasted-questions">题干、选项和答案各占一行，判断题可只写题干和答案。</label>
+        <textarea id="pasted-questions" name="questions" rows="5" required placeholder="下列哪个是偶数？&#10;A. 1&#10;B. 2&#10;答案：B&#10;解析：2 能被 2 整除。">${esc(pastedQuestions)}</textarea>
+        <button class="secondary" type="submit" ${importBusy?'disabled':''}>预览粘贴内容</button>
+      </form>
+    </details>
+    ${importError?`<p class="error" role="alert">${esc(importError)}</p>`:''}
+    ${importStatus?`<p role="status">${esc(importStatus)}</p>`:''}
+    ${preview}
+    ${state.custom.length?`<details><summary>旧版题库设置</summary><button class="secondary" data-clear>恢复内置题库</button></details>`:''}
+  </section>`;
+}
+function importKey(q){
+  const clean=value=>String(value??'').normalize('NFKC').trim().replace(/\s+/g,' ');
+  return JSON.stringify([clean(q.question),q.options.map(clean).sort(),clean(q.options[q.answer])]);
+}
+function previewImport(source,format){
+  importError='';importStatus='';importDraft=null;
   try{
-    let items=[];
-    if(file.name.toLowerCase().endsWith('.json')){
-      const data=JSON.parse(await file.text());const rows=Array.isArray(data)?data:Array.isArray(data.questions)?data.questions:[];
-      items=rows.every(r=>Array.isArray(r.options)&&Number.isInteger(r.answer))?rows:normalize(rows);
-    }else{
-      if(!window.XLSX)throw Error('表格读取组件未加载，请刷新页面后重试。');
-      const wb=XLSX.read(await file.arrayBuffer(),{type:'array'});
-      items=wb.SheetNames.flatMap(name=>{const sheet=wb.Sheets[name];const rows=XLSX.utils.sheet_to_json(sheet,{header:1,defval:''});return rows[1]?.[2]==='正确答案(A)'?parseNative(rows,name):normalize(XLSX.utils.sheet_to_json(sheet,{defval:''}))});
-    }
-    if(!items.length)throw Error('没有识别到有效题目。请检查题目、选项和答案列。');
-    const existing=new Map((window.BUNDLED_QUESTIONS||[]).map(q=>[`${q.question}|${q.options[q.answer]}`,q.explanation]));
-    items=items.map(q=>({...q,explanation:q.explanation||existing.get(`${q.question}|${q.options[q.answer]}`)||window.createExplanation(q)}));
-    state.custom=items;category='全部分类';questionType='全部题型';save();importError='';leavePractice();libraryDetailId=null;setView('library');alert(`成功导入 ${items.length} 道题，可以开始练习了。`);
-  }catch(err){importError=err.message||'导入失败，请检查文件格式。';render()}
-  e.target.value='';
+    const parsed=window.TijianQuestionImport.parse(source,format,window.XLSX,parseNative);
+    const seen=new Set(bank().map(importKey));
+    const items=parsed.items.filter(q=>{
+      const key=importKey(q);
+      if(seen.has(key))return false;
+      seen.add(key);
+      return true;
+    });
+    importDraft={items,issues:parsed.issues,duplicates:parsed.items.length-items.length};
+    if(!parsed.items.length&&!parsed.issues.length)importError='没有找到题目。请检查文件或粘贴内容。';
+  }catch(error){importError=format==='json'&&error instanceof SyntaxError?'JSON 格式有误，请检查括号、引号和逗号。':error.message;}
+  render();
+}
+function confirmImport(){
+  if(!importDraft?.items.length)return;
+  const before=state.added;
+  const items=importDraft.items.map(q=>({...q,id:'added-'+crypto.randomUUID(),explanation:q.explanation||window.createExplanation(q)}));
+  state.added=before.concat(items);
+  try{save()}
+  catch{state.added=before;importError='保存失败，浏览器存储空间可能不足。请减少本次导入的题目数量。';render();return}
+  importDraft=null;pastedQuestions='';importError='';importStatus=`已新增 ${items.length} 道题`;
+  searchQuery='';searchType='全部题型';searchPage=0;
+  render();
+}
+document.querySelector('#file-input').addEventListener('change',async event=>{
+  const file=event.target.files?.[0];
+  event.target.value='';
+  if(!file||importBusy)return;
+  const format=file.name.split('.').pop().toLowerCase();
+  importDraft=null;pastedQuestions='';importError='';importStatus='';importBusy=true;render();
+  try{
+    if(!['xlsx','xls','csv','tsv','json','txt'].includes(format))throw Error('请选择 Excel、CSV、TSV、JSON 或 TXT 文件。');
+    const source=['json','txt'].includes(format)?await file.text():await file.arrayBuffer();
+    importBusy=false;
+    previewImport(source,format);
+  }catch(error){importBusy=false;importError=error.message||'无法读取文件。';render()}
 });
 document.querySelector('.brand')?.addEventListener('click',event=>{event.preventDefault();leavePractice();setView('home')});document.querySelectorAll('.nav-item').forEach(b=>b.onclick=()=>{leavePractice();if(b.dataset.view==='history'){historySessionId=null;historyQuestionIndex=null}setView(b.dataset.view)});const baseRender=render;render=function(){baseRender();bindFilters()};render();enableBackGestures();
 
