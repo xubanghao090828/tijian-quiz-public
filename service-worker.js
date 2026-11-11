@@ -1,4 +1,4 @@
-const CACHE='tijian-offline-20261110-import';
+const CACHE='tijian-offline-20261111-sequential';
 const ASSETS=['./','./index.html','./styles.css','./redesign.css','./terminal.css','./arcade.css','./cnc-banner.png','./questions.js','./explain.js','./xlsx.full.min.js','./identity.js','./question-import.js','./question-template.csv','./app.js','./sync.js','./manifest.webmanifest','./icon.svg','./icon-192.png','./icon-512.png'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim())));
