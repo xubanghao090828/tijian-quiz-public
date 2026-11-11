@@ -494,6 +494,41 @@ body[data-view="practice"] .knot-card .question-actions .finish-cta:hover{backgr
 .review-navigation{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .review-navigation>span{color:#c3c6cf;font-size:12px}
 .history-actions{flex-wrap:wrap}
+.memory-dashboard{margin-bottom:18px}
+.memory-dashboard>p{color:#c1c5cf;line-height:1.7;font-size:13px}
+.memory-dashboard-title{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.memory-dashboard-title h2{margin:4px 0 10px}
+.memory-dashboard-title>span{color:#cced74;font-size:12px;white-space:nowrap}
+.memory-counts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:18px 0}
+.memory-counts>div{display:flex;align-items:center;flex-direction:column;gap:6px;padding:14px 5px;border:1px solid #596171;border-radius:10px;background:#1b2029}
+.memory-counts strong{color:#cce0ff;font-size:25px;font-variant-numeric:tabular-nums}
+.memory-counts small{color:#b4bdcc;font-size:11px}
+.memory-filters{display:flex;flex-wrap:wrap;gap:8px;margin-top:17px}
+.memory-filters .pill{min-height:40px;font-size:12px}
+.memory-filters .pill.selected{border-color:#c9ec6c;background:#c9ec6c;color:#162000}
+.memory-dashboard .button-row>button{min-height:44px}
+.memory-dashboard details{margin-top:14px;padding:12px;border:1px solid #4d5768;border-radius:8px;color:#bdc9dd}
+.memory-dashboard details p{font-size:12px;line-height:1.7}
+.memory-dashboard summary{cursor:pointer;font-weight:800}
+.memory-dashboard a{color:#b6d2ff;font-size:12px}
+.memory-row{display:flex!important;align-items:center;gap:8px;flex-wrap:wrap;margin-top:9px}
+.memory-stage{display:inline-block;padding:4px 8px;border:1px solid #727b8a;border-radius:6px;background:#313744;color:#dbe4f5;font-size:10px;font-weight:800}
+.memory-stage.is-mastered{border-color:#9cb95b;background:#2b3c21;color:#d0ef9f}
+.memory-stage.is-learning{border-color:#829ed0;background:#273953;color:#c5dcff}
+.memory-row .memory-due{color:#ffd59b}
+.memory-detail{margin:18px 0;padding:16px;border:1px solid #7589ac;border-radius:10px;background:#1e2a3e}
+.memory-detail h3{margin:0 0 12px;color:#dfebff;font-size:15px}
+.memory-detail p{color:#bccce5;font-size:12px;line-height:1.7}
+.memory-feedback{margin:15px 22px;padding:12px;border-left:3px solid #b1d86e;background:#293426;color:#d9eec7;font-size:12px;line-height:1.7}
+.memory-home{margin-bottom:18px;border-color:#7b9551}
+@media(max-width:700px){
+  .memory-dashboard{padding:16px}
+  .memory-counts{gap:6px}
+  .memory-counts strong{font-size:22px}
+  .memory-counts small{font-size:10px}
+  .memory-filters .pill{padding:8px 11px}
+  .memory-feedback{margin:13px 16px}
+}
 .mistake-mode-panel{margin-bottom:16px}
 .mistake-mode-panel h2{margin:0 0 14px}
 .mistake-mode-tabs{display:flex;gap:8px;flex-wrap:wrap}

@@ -3,8 +3,16 @@
 数控题库刷题网页与荣耀 Android 应用。内置 1,460 道题及解析，可离线刷题，无需登录。
 
 - [打开网页](https://xubanghao090828.github.io/tijian-quiz-public/)
-- [下载 Android 1.13.0 APK](https://xubanghao090828.github.io/tijian-quiz-public/Tijian-Honor-offline-v1.13.0.apk)
+- [下载 Android 1.14.0 APK](https://xubanghao090828.github.io/tijian-quiz-public/Tijian-Honor-offline-v1.14.0.apk)
 - [版本发布页](https://github.com/xubanghao090828/tijian-quiz-public/releases)
+
+## 1.14.0 记忆复习
+
+采用 [ts-fsrs 6.0.0 / FSRS-7](https://github.com/open-spaced-repetition/ts-fsrs) 的官方默认参数，在本机离线安排复习。错题答对后继续保留，提供到期、待巩固、已巩固和久未练筛选；到期队列每轮最多 30 道。短间隔重学题优先，已巩固题也会按时返回。
+
+同题跨来源分组共享记忆进度。复习事件保存时间与评分，用于离线恢复和跨设备同步。旧题从本次升级起建立计划，当前没有训练个人专属模型参数。
+
+浏览器包与依赖许可证位于网页资源的 vendor/fsrs-LICENSE.txt。
 
 ## 1.13.0
 

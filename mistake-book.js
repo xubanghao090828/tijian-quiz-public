@@ -106,14 +106,6 @@ function addMistake(id, scope, marked = false) {
   refreshMistakeTotals();
 }
 
-function clearResolvedMistakes(id, scope) {
-  const candidates = scope === 'all' ? MISTAKE_MODES.map(([value]) => value) : [scope];
-  const removed = candidates.filter(value => state.mistakeGroups[value]?.[id] && !isMistakeMarked(id, value));
-  for (const value of removed) delete state.mistakeGroups[value][id];
-  refreshMistakeTotals();
-  return removed;
-}
-
 function removeMistake(id, scope) {
   const candidates = scope === 'all' ? Object.values(state.mistakeGroups) : [state.mistakeGroups[scope]];
   for (const group of candidates) if (group) delete group[id];
@@ -137,22 +129,23 @@ function mistakes() {
     const question = all.find(item => item.id === mistakeDetailId);
     if (question) return `<div class="detail-head"><button class="secondary" data-mistake-back>← 返回${label}</button>
       <span>${esc(question.category || '未分类')}</span></div><div class="card panel review-detail">
-      ${mistakeSourceBadges(question.id)}<h2>${esc(question.question)}</h2>${questionReview(question, null)}
+      ${mistakeSourceBadges(question.id)}${memoryDetailHtml(question.id)}<h2>${esc(question.question)}</h2>${questionReview(question, null)}
       <button class="secondary" data-remove="${esc(question.id)}">${removeLabel}</button></div>`;
     mistakeDetailId = null;
   }
   const query = mistakeSearchQuery.trim().toLowerCase();
-  const shown = all.filter(question => !query || [question.question, ...question.options, question.category]
+  const shown = filterMemoryQuestions(all).filter(question => !query || [question.question, ...question.options, question.category]
     .some(value => String(value || '').toLowerCase().includes(query)));
   const tabs = [['all', '全部模式'], ...MISTAKE_MODES].map(([value, name]) => `
     <button class="pill ${value === mistakeModeFilter ? 'selected' : ''}" data-mistake-mode="${value}"
       aria-pressed="${value === mistakeModeFilter}">${name} <b>${mistakeQuestions(value).length}</b></button>`).join('');
   return `<div class="hero"><div><div class="eyebrow">REVIEW / ARCHIVE</div><h1>错题本</h1>
-    <p>按出题模式分开复习，同一道题可以保留在多个分组。</p></div></div>
+    <p>错题持续保留，按记忆计划安排复习，也可以按来源模式分别查看。</p></div></div>
     <section class="card panel mistake-mode-panel"><h2>来源模式</h2><div class="mistake-mode-tabs" role="group" aria-label="错题来源模式">${tabs}</div></section>
-    <div class="mistake-toolbar card panel"><div><strong>${label} · ${all.length} 道待复习</strong>
+    ${memoryDashboardHtml(mistakeModeFilter)}
+    <div class="mistake-toolbar card panel"><div><strong>${label} · ${all.length} 道保留题目</strong>
       <span>标记不会 ${all.filter(question => mistakeModeFilter === 'all' ? state.marked[question.id] : isMistakeMarked(question.id, mistakeModeFilter)).length} 道</span></div>
-      ${all.length ? `<button class="primary" data-start-wrong="${mistakeModeFilter}">复习${mistakeModeFilter === 'all' ? '全部' : '本组'} →</button>` : ''}</div>
+</div>
     ${mistakeModeFilter === 'legacy' ? '<p class="muted">这些旧记录没有足够信息确定来源，已保留在这里。</p>' : ''}
     <form class="mistake-search-form card panel"><label for="mistake-search">搜索${label}的错题</label>
       <div><input id="mistake-search" name="query" type="search" value="${esc(mistakeSearchQuery)}" placeholder="题干、选项或知识点" autocomplete="off">
@@ -161,16 +154,17 @@ function mistakes() {
       <div class="card mistake-row"><button class="mistake-open" data-mistake-detail="${esc(question.id)}">
         <span class="mistake-index">${String(i + 1).padStart(2, '0')}</span><span>
           <small>${esc(question.category || '未分类')} · ${esc(question.type || '单选题')}</small>
-          <strong>${esc(question.question)}</strong>${mistakeSourceBadges(question.id)}</span><b>›</b></button>
+          <strong>${esc(question.question)}</strong>${mistakeSourceBadges(question.id)}${memoryRowHtml(question.id)}</span><b>›</b></button>
         <button class="mistake-remove" data-remove="${esc(question.id)}">${removeLabel}</button></div>`).join('')}</div>`
-      : `<div class="card empty"><h2>${all.length ? '没有找到相关错题' : '这一组暂时没有错题'}</h2>
-          <p>${all.length ? '试试更短的关键词。' : '在对应模式中答错或标记的题，会自动保存在这里。'}</p></div>`}`;
+      : `<div class="card empty"><h2>${query ? '没有找到相关错题' : all.length ? '当前记忆状态下没有题目' : '这一组暂时没有错题'}</h2>
+          <p>${all.length ? '可以切换到“全部保留”，查看未到期和已巩固的题。' : '在对应模式中答错或标记的题，会自动保存在这里。'}</p></div>`}`;
 }
 
 function bindMistakeBook() {
   document.querySelectorAll('[data-mistake-mode]').forEach(button => button.onclick = () => {
     mistakeModeFilter = button.dataset.mistakeMode;
     mistakeSearchQuery = '';
+    mistakeMemoryFilter = 'all';
     mistakeDetailId = null;
     render();
   });

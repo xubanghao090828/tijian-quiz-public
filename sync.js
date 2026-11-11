@@ -27,10 +27,11 @@
     }
     state.attempts=attempts;
     rebuildMistakeGroups(ordered);
+    rebuildMemoryCards();
     save();
   }
-  function record(questionId,kind,total,correct,mistakeAction,mistakeMode=null){
-    ensureEvents();state.events.push({id:crypto.randomUUID(),deviceId:profile().deviceId,questionId,kind,total,correct,mistakeAction,mistakeMode,createdAt:Date.now()});save();
+  function record(questionId,kind,total,correct,mistakeAction,mistakeMode=null,memoryRating=null){
+    ensureEvents();state.events.push({id:crypto.randomUUID(),deviceId:profile().deviceId,questionId,kind,total,correct,mistakeAction,mistakeMode,memoryRating,createdAt:Date.now()});rebuildMemoryCards();save();
     if(navigator.onLine)sync();
   }
   function mergeRemoteSessions(items){

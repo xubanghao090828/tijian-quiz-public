@@ -130,7 +130,7 @@ function resultView(record = currentSession) {
         ${reviewEntry(record, '整卷回顾', 'paper')}
       </div>
     </section>
-    <div class="result-actions">${primary}<button class="result-action-outline" data-go="history">历史答题</button><button class="result-action-outline" data-go="mistakes">打开错题本</button></div>
+    ${memorySummaryHtml(record)}<div class="result-actions">${primary}<button class="result-action-outline" data-go="history">历史答题</button><button class="result-action-outline" data-go="mistakes">打开错题本</button></div>
     <div class="result-foot">TIJIAN / STUDY SYSTEM <span>${esc(sessionDate(record.finishedAt || record.updatedAt))}</span></div>
   </div>`;
 }
