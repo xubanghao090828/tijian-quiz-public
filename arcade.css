@@ -494,6 +494,9 @@ body[data-view="practice"] .knot-card .question-actions .finish-cta:hover{backgr
 .review-navigation{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .review-navigation>span{color:#c3c6cf;font-size:12px}
 .history-actions{flex-wrap:wrap}
+.knot-card{position:relative}
+.question-scene{display:flow-root;position:relative}
+.question-scene-ghost{position:absolute;left:0;right:0;z-index:4;margin:0;background:#202126;pointer-events:none;user-select:none;will-change:transform,opacity}
 .sequential-card{flex-wrap:wrap}
 .sequential-start-form{display:flex;align-items:center;gap:9px;flex-wrap:wrap;flex-basis:100%;padding-top:15px;border-top:1px solid #576071;font-size:13px}
 .sequential-start-form input{width:88px;padding:10px;min-height:44px;border:1px solid #8492aa;border-radius:8px;background:#1c2535;color:#fff;font:inherit}
