@@ -81,7 +81,7 @@ function resultView(record = currentSession) {
   const missedHtml = missed.slice(0, 3).map(row => `
     <button class="result-missed" data-review-session="${esc(record.id)}" data-review-layout="single"
       data-review-filter="wrong" data-review-index="${row.index}">
-      <span>${String(row.index + 1).padStart(2, '0')}</span><strong>${esc(row.question.question)}</strong><b>查看解析 ↗</b>
+      <span>${String(sessionQuestionNumber(record,row.index)).padStart(2, '0')}</span><strong>${esc(row.question.question)}</strong><b>查看解析 ↗</b>
     </button>`).join('');
   const types = [...new Set(rows.filter(row => row.question).map(row => row.question.type || '单选题'))];
   const typeHtml = types.map(type => {
@@ -92,8 +92,8 @@ function resultView(record = currentSession) {
       <td>${questions.filter(row => row.status === 'wrong').length}</td><td>${done ? Math.round(right / done * 1000) / 10 + '%' : '—'}</td></tr>`;
   }).join('');
   const primary = finished
-    ? `<button class="result-action-primary" data-start="${esc(record.mode)}">重新挑战 ↗</button>`
-    : `<button class="result-action-primary" data-resume="${esc(record.id)}">继续本轮 · 第 ${Math.min((record.index || 0) + 1, total)} 题 →</button>`;
+    ? (record.mode==='sequential'?`<button class="result-action-primary" data-sequence-restart="${esc(record.id)}">从本轮起点重新挑战 ↗</button>`:`<button class="result-action-primary" data-start="${esc(record.mode)}">重新挑战 ↗</button>`)
+    : `<button class="result-action-primary" data-resume="${esc(record.id)}">继续本轮 · 第 ${sessionQuestionNumber(record,Math.min(record.index || 0,total-1))} 题 →</button>`;
   return `<div class="result-screen" aria-label="${finished ? '练习结算' : '阶段总结'}">
     <div class="result-system"><span><i>✦</i> STUDY / COMMISSION</span><span>PROGRESS SAVED <b>● ${finished ? '结算完成' : '进度已保存'}</b></span></div>
     <div class="result-intro">${finished ? 'COMMISSION COMPLETE' : 'TRAINING IN PROGRESS'} <span>${esc(sessionTitle(record.mode))}</span></div>
@@ -117,10 +117,10 @@ function resultView(record = currentSession) {
     <p class="result-rule">${finished ? '按答对题数折算百分制 · S ≥ 90 / A ≥ 80 / B ≥ 70 / C ≥ 60'
       : '总结按已答题统计，未答题单独计数。进度保留，随时可继续。'}</p>
     ${stats.unavailable ? `<p class="review-warning">${stats.unavailable} 道题已不在当前题库，恢复原题库后可查看对应解析。</p>` : ''}
-    <section class="result-focus"><div class="result-section-head"><span>REPORT / 题型表现</span><strong>看看哪类题需要加强</strong></div>
+    ${sequentialSummaryHtml(record,stats)}<section class="result-focus"><div class="result-section-head"><span>REPORT / 题型表现</span><strong>看看哪类题需要加强</strong></div>
       <table class="result-type-table"><thead><tr><th scope="col">题型</th><th scope="col">已答 / 总数</th><th scope="col">答对</th><th scope="col">答错</th><th scope="col">正确率</th></tr></thead><tbody>${typeHtml}</tbody></table>
     </section>
-    <section class="result-focus"><div class="result-section-head"><span>INTEL / 改进方向</span><strong>${focus.length ? '优先突破这些知识点' : '继续巩固已学知识'}</strong></div>${focusHtml}</section>
+    <section class="result-focus"><div class="result-section-head"><span>INTEL / 改进方向</span><strong>${focus.length ? '优先突破这些知识点' : '继续巩固已学知识'}</strong></div>${focusHtml}${missed.length||record.weakCategories?.length?`<p class="muted">从现有题库抽取薄弱分类的题，优先本轮未出现的题，最多 50 道。</p><button class="result-action-outline" data-weakness-paper="${esc(record.id)}">按薄弱分类组复习卷 →</button>`:''}</section>
     <section class="result-review"><div class="result-section-head"><span>REVIEW / 本轮回顾</span><strong>错题 ${wrong} 道 · 标记不会 ${marked} 道</strong></div>
       ${missedHtml}
       <div class="result-review-links">
@@ -162,6 +162,7 @@ function openReview(id, layout = 'single', filter = 'all', questionIndex = null)
   if (questionIndex !== null) {
     const rows = filteredReviewRows(record);
     reviewState.position = Math.max(0, rows.findIndex(row => row.index === questionIndex));
+    reviewState.page = Math.floor(reviewState.position / REVIEW_PAGE_SIZE);
   }
   setView('review');
 }
@@ -186,8 +187,8 @@ function reviewQuestionHtml(row, record) {
 
 function reviewCard(row, record, whole) {
   const labels = { correct: '答对', wrong: '答错', unanswered: '未答', unavailable: '题目缺失' };
-  return `<article class="card panel review-detail paper-question" aria-label="第 ${row.index + 1} 题回顾">
-    <div class="review-question-meta"><span>第 ${row.index + 1} / ${record.questionIds.length} 题</span>
+  return `<article class="card panel review-detail paper-question" aria-label="第 ${sessionQuestionNumber(record,row.index)} 题回顾">
+    <div class="review-question-meta"><span>${record.mode==='sequential'?'题库第 '+sessionQuestionNumber(record,row.index)+' 题 · 本轮 ':'第 '}${row.index+1} / ${record.questionIds.length} 题</span>
       <span class="review-status is-${row.status}">${labels[row.status]}</span>${row.marked ? '<span class="review-status">◇ 已标记</span>' : ''}</div>
     <div class="question-meta"><span>${esc(row.question?.type || '题目缺失')}</span><span>${esc(row.question?.category || '未分类')}</span></div>
     <h2>${esc(row.question?.question || '题目已不在当前题库')}</h2>${reviewQuestionHtml(row, record)}
@@ -235,7 +236,7 @@ function reviewView() {
     const position = reviewState.position;
     content = `<label class="review-select-label" for="review-question-select">选择本轮题目（当前范围共 ${rows.length} 道）</label>
       <select id="review-question-select">${rows.map((row, i) =>
-        `<option value="${i}" ${i === position ? 'selected' : ''}>第 ${row.index + 1} 题${row.marked ? ' · 已标记' : ''}</option>`).join('')}</select>
+        `<option value="${i}" ${i === position ? 'selected' : ''}>第 ${sessionQuestionNumber(record,row.index)} 题${row.marked ? ' · 已标记' : ''}</option>`).join('')}</select>
       ${reviewCard(rows[position], record, false)}
       <div class="review-navigation"><button class="secondary" data-review-step="${position - 1}" ${position === 0 ? 'disabled' : ''}>← 上一题</button>
         <span>${position + 1} / ${rows.length}</span>

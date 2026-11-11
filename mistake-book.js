@@ -1,6 +1,6 @@
 const MISTAKE_MODES = [
   ['exam', '随机模拟'], ['sequential', '整库顺序刷'], ['order', '专项顺序'],
-  ['random', '随机练习'], ['wrong', '错题复习'], ['legacy', '历史未分类']
+  ['random', '随机练习'], ['targeted', '薄弱强化'], ['wrong', '错题复习'], ['legacy', '历史未分类']
 ];
 let mistakeModeFilter = 'all';
 

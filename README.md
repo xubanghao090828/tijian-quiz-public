@@ -3,8 +3,12 @@
 数控题库刷题网页与荣耀 Android 应用。内置 1,460 道题及解析，可离线刷题，无需登录。
 
 - [打开网页](https://xubanghao090828.github.io/tijian-quiz-public/)
-- [下载 Android 1.14.0 APK](https://xubanghao090828.github.io/tijian-quiz-public/Tijian-Honor-offline-v1.14.0.apk)
+- [下载 Android 1.15.0 APK](https://xubanghao090828.github.io/tijian-quiz-public/Tijian-Honor-offline-v1.15.0.apk)
 - [版本发布页](https://github.com/xubanghao090828/tijian-quiz-public/releases)
+
+## 1.15.0 顺序范围与薄弱分类强化
+
+可指定顺序刷的起点并独立续做。总结提供本轮范围、连续完成、漏答、每 50 题分段和全部分类表现，并可补最早未答题。从错题知识分类抽取最多 50 道组成强化卷，优先同分类未出现题，保留得分、历史和整卷回顾。
 
 ## 1.14.0 记忆复习
 
