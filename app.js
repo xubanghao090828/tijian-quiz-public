@@ -7,9 +7,12 @@ const DEMO=[
 ];
 const KEY=window.TIJIAN_STATE_KEY||'tijian-v1';
 let state=load(); let view='home'; let mode='order'; let session=[]; let answers=[]; let index=0; let selected=null; let sessionCorrect=0; let currentSession=null; let historySessionId=null; let historyQuestionIndex=null; let searchQuery=''; let searchType='全部题型'; let searchPage=0; let libraryDetailId=null; let mistakeSearchQuery=''; let mistakeDetailId=null; let importError=''; let importStatus=''; let pastedQuestions=''; let importDraft=null; let importBusy=false; let sessionError=''; let category='全部分类'; let questionType='全部题型'; let homeTab='schedule'; let homePeriod='today'; let navOpen=false; let lastMotionKey=null; let answerMotion=false; let navMotion=false; let lastResultAnimatedId=null; let hapticsEnabled=localStorage.getItem('tijian-haptics')!=='off'; let motionEnabled=localStorage.getItem('tijian-motion')!=='off'; let fontSize=['standard','large','extra'].includes(localStorage.getItem('tijian-font-size'))?localStorage.getItem('tijian-font-size'):'standard';
+let autoNextEnabled=localStorage.getItem('tijian-auto-next')!=='off';
+let autoNextTimer=null;
+let autoNextPending=null;
 function applyPreferences(){document.documentElement.dataset.motion=motionEnabled?'on':'off';document.body.dataset.fontSize=fontSize}
 applyPreferences();
-function load(){try{const s=JSON.parse(localStorage.getItem(KEY));return {added:Array.isArray(s.added)?s.added:[],custom:Array.isArray(s.custom)?s.custom:[],attempts:s.attempts||{},mistakes:s.mistakes||{},marked:s.marked||{},events:s.events,cursor:s.cursor||0,sessions:Array.isArray(s.sessions)?s.sessions.map(record=>({...record,dirty:record.dirty!==false})):[],sessionCursor:s.sessionCursor||0}}catch{return {added:[],custom:[],attempts:{},mistakes:{},marked:{},events:[],cursor:0,sessions:[],sessionCursor:0}}}
+function load(){try{const s=JSON.parse(localStorage.getItem(KEY));return {mistakeGroups:s.mistakeGroups||null,added:Array.isArray(s.added)?s.added:[],custom:Array.isArray(s.custom)?s.custom:[],attempts:s.attempts||{},mistakes:s.mistakes||{},marked:s.marked||{},events:s.events,cursor:s.cursor||0,sessions:Array.isArray(s.sessions)?s.sessions.map(record=>({...record,dirty:record.dirty!==false})):[],sessionCursor:s.sessionCursor||0}}catch{return {mistakeGroups:null,added:[],custom:[],attempts:{},mistakes:{},marked:{},events:[],cursor:0,sessions:[],sessionCursor:0}}}
 function save(){localStorage.setItem(KEY,JSON.stringify(state))}
 let enrichedCustomSource=null,enrichedCustomCache=null;
 function bank(){
@@ -33,7 +36,7 @@ function countAttempts(){return Object.values(state.attempts).reduce((n,x)=>n+x.
 function countCorrect(){return Object.values(state.attempts).reduce((n,x)=>n+x.correct,0)}
 function esc(x){return String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function dateLabel(){return new Intl.DateTimeFormat('zh-CN',{month:'long',day:'numeric',weekday:'long'}).format(new Date())}
-function setView(v){if(v==='mistakes'&&view!==v)mistakeDetailId=null;view=v;document.body.dataset.view=v;document.querySelectorAll('.nav-item').forEach(el=>el.classList.toggle('active',el.dataset.view===v||(v==='settings'&&el.dataset.view==='sync')||(['summary','review'].includes(v)&&el.dataset.view==='history')));document.querySelector('#page-name').textContent=({home:'总览',practice:'开始刷题',mistakes:'错题本',library:'我的题库',history:'历史答题',sync:'我的空间',settings:'设置',summary:'练习总结',review:'本轮回顾'})[v];render();window.scrollTo({top:0,behavior:'auto'})}
+function setView(v){cancelAutoNext();if(v==='mistakes'&&view!==v)mistakeDetailId=null;view=v;document.body.dataset.view=v;document.querySelectorAll('.nav-item').forEach(el=>el.classList.toggle('active',el.dataset.view===v||(v==='settings'&&el.dataset.view==='sync')||(['summary','review'].includes(v)&&el.dataset.view==='history')));document.querySelector('#page-name').textContent=({home:'总览',practice:'开始刷题',mistakes:'错题本',library:'我的题库',history:'历史答题',sync:'我的空间',settings:'设置',summary:'练习总结',review:'本轮回顾'})[v];render();window.scrollTo({top:0,behavior:'auto'})}
 function render(){
   const navScroll=document.querySelector('.question-nav-scroll')?.scrollTop||0;
   const motionKey=view==='summary'?view+':'+summarySessionId:view==='review'?JSON.stringify(reviewState):view==='practice'?`${view}:${currentSession?.id||'setup'}:${index}:${session.length}`:view==='home'?`${view}:${homeTab}:${homePeriod}`:`${view}:${historySessionId||''}:${historyQuestionIndex??''}:${libraryDetailId||''}:${mistakeDetailId||''}`;
@@ -47,7 +50,7 @@ function render(){
   document.querySelector('#today-label').textContent=dateLabel();document.querySelector('#mistake-count').textContent=Object.keys(state.mistakes).length;
   app.innerHTML=({home:homeView,practice:practiceView,mistakes:mistakes,library:libraryView,history:historyView,sync:()=>window.TijianSync?.viewHtml()||'',settings:settingsView,summary:()=>resultView(state.sessions.find(record=>record.id===summarySessionId)),review:reviewView})[view]();
   if(showFinishDock)app.insertAdjacentHTML('beforeend',`<div class="finish-dock"><strong>${session.length} / ${session.length} 已答完</strong><button data-finish>查看结算 →</button></div>`);
-  const nav=document.querySelector('.question-nav-scroll');if(nav)nav.scrollTop=navScroll;bind();bindSessionReview();window.TijianSync?.bind();animateResultScore()
+  const nav=document.querySelector('.question-nav-scroll');if(nav)nav.scrollTop=navScroll;bind();bindSessionReview();bindMistakeBook();window.TijianSync?.bind();animateResultScore()
 }
 function haptic(kind='tap'){
   if(!hapticsEnabled)return;
@@ -122,9 +125,10 @@ function sequentialCard(){
 function resumeCard(){const s=latestActive();if(!s)return '';const done=s.answers.filter(a=>a!==null).length;return `<div class="card resume-card"><div><div class="eyebrow">CONTINUE LEARNING</div><h2>继续上次的${sessionTitle(s.mode)}</h2><p>${sessionDate(s.updatedAt)} · 已答 ${done} / ${s.questionIds.length} 题</p></div><button class="primary" data-resume="${esc(s.id)}">继续答题 →</button></div>`}
 function persistSession(){if(!currentSession)return;currentSession.answers=[...answers];currentSession.index=index;currentSession.updatedAt=Date.now();currentSession.dirty=true;save();if(navigator.onLine)window.TijianSync?.sync()}
 function resumeSession(id){const record=state.sessions.find(s=>s.id===id);if(!record||record.status!=='active')return;const byId=new Map(bank().map(q=>[q.id,q]));const restored=record.questionIds.map(id=>byId.get(id));if(restored.some(q=>!q)){sessionError='这轮题目所在的题库已更换，暂时无法继续。请恢复原题库后重试。';session=[];setView('practice');return}currentSession=record;session=restored;mode=record.mode;answers=record.answers.slice(0,session.length);while(answers.length<session.length)answers.push(null);index=Math.min(Math.max(record.index||0,0),session.length-1);selected=answers[index];sessionCorrect=answers.reduce((total,answer,i)=>total+(answer!==null&&answer===session[i].answer?1:0),0);sessionError='';setView('practice')}
-function finishSession(){if(answeredCount()!==session.length||!currentSession)return;currentSession.status='finished';currentSession.finishedAt=Date.now();currentSession.correctCount=sessionCorrect;currentSession.score=Math.round(sessionCorrect/session.length*1000)/10;index=session.length;persistSession();haptic('correct');openResult(currentSession.id)}
+function finishSession(){cancelAutoNext();if(answeredCount()!==session.length||!currentSession)return;currentSession.status='finished';currentSession.finishedAt=Date.now();currentSession.correctCount=sessionCorrect;currentSession.score=Math.round(sessionCorrect/session.length*1000)/10;index=session.length;persistSession();haptic('correct');openResult(currentSession.id)}
 function sessionScore(record,byId){if(Number.isFinite(record.score))return record.score;if(record.status!=='finished'||!record.questionIds.length||record.questionIds.some(id=>!byId.has(id)))return null;const correct=record.questionIds.reduce((n,id,i)=>n+(record.answers[i]===byId.get(id).answer?1:0),0);return Math.round(correct/record.questionIds.length*1000)/10}
-function start(m='exam'){
+function start(m='exam',mistakeSourceMode='all'){
+  cancelAutoNext();
   if(m==='sequential'){
     const record=sequentialRecord();
     if(record){resumeSession(record.id);return}
@@ -135,12 +139,12 @@ function start(m='exam'){
     const judges=bank().filter(q=>q.type==='判断题');
     if(singles.length<140||judges.length<60){sessionError=`当前题库需要至少 140 道单选和 60 道判断（现有 ${singles.length} 道单选、${judges.length} 道判断）。`;session=[];setView('practice');return}
     session=shuffle([...shuffle(singles).slice(0,140),...shuffle(judges).slice(0,60)]);
-  }else{session=m==='sequential'?[...bank()]:m==='wrong'?filtered().filter(q=>state.mistakes[q.id]):[...filtered()];if(m==='random')session=shuffle(session)}
+  }else{session=m==='sequential'?[...bank()]:m==='wrong'?mistakeQuestions(mistakeSourceMode):[...filtered()];if(m==='random')session=shuffle(session)}
   if(!session.length){sessionError='当前范围没有可练习的题目，请调整筛选或选择其他模式。';currentSession=null;setView('practice');return}
-  answers=Array(session.length).fill(null);index=0;selected=null;sessionCorrect=0;currentSession={id:crypto.randomUUID(),mode:m,markedQuestionIds:session.filter(q=>state.marked[q.id]).map(q=>q.id),questionIds:session.map(q=>q.id),answers:[...answers],index:0,status:'active',createdAt:Date.now(),updatedAt:Date.now(),dirty:true};state.sessions.unshift(currentSession);save();if(navigator.onLine)window.TijianSync?.sync();setView('practice');
+  answers=Array(session.length).fill(null);index=0;selected=null;sessionCorrect=0;currentSession={id:crypto.randomUUID(),mode:m,...(m==='wrong'?{mistakeSourceMode}:{}),markedQuestionIds:session.filter(q=>isMistakeMarked(q.id,m)).map(q=>q.id),questionIds:session.map(q=>q.id),answers:[...answers],index:0,status:'active',createdAt:Date.now(),updatedAt:Date.now(),dirty:true};state.sessions.unshift(currentSession);save();if(navigator.onLine)window.TijianSync?.sync();setView('practice');
 }
 function answeredCount(){return answers.filter(answer=>answer!==null).length}
-function goToQuestion(target){if(!Number.isInteger(target)||target<0||target>=session.length||target===index)return;haptic('tap');index=target;selected=answers[index];navOpen=false;persistSession();render();window.scrollTo({top:0,behavior:'auto'})}
+function goToQuestion(target){const pending=Boolean(autoNextPending);cancelAutoNext();if(!Number.isInteger(target)||target<0||target>=session.length||target===index){if(pending)render();return}haptic('tap');index=target;selected=answers[index];navOpen=false;persistSession();render();window.scrollTo({top:0,behavior:'auto'})}
 function questionNav(){if(mode!=='exam')return '';const done=answeredCount();return `<button class="nav-bottom-toggle" type="button" data-toggle-question-nav aria-expanded="${navOpen}" aria-controls="question-number-panel"><span>▦ 题号导航</span><small>第 ${index+1} / ${session.length} 题 · 已答 ${done}</small><b>${navOpen?'收起 ↑':'展开 ↓'}</b></button><aside id="question-number-panel" class="card question-nav" aria-label="题号导航"><div class="question-nav-head"><strong>题号导航</strong><span>已答 ${done} / ${session.length}</span><button class="nav-close" type="button" data-toggle-question-nav aria-label="收起题号导航">×</button></div><form class="question-jump-form"><label for="jump-number">跳到第</label><input id="jump-number" name="number" type="number" min="1" max="${session.length}" value="${index+1}" inputmode="numeric"><span>题</span><button type="submit">跳转</button></form><div class="question-nav-legend"><span><i class="current"></i>当前</span><span><i class="done"></i>已答</span><span><i></i>未答</span></div><div class="question-nav-scroll"><div class="question-nav-grid">${session.map((_,i)=>`<button type="button" class="question-number ${i===index?'current':answers[i]!==null?'done':''}" data-jump="${i}" aria-label="第 ${i+1} 题，${answers[i]!==null?'已答':'未答'}" ${i===index?'aria-current="step"':''}>${i+1}</button>`).join('')}</div></div></aside>`}
 function filters(){const categories=['全部分类',...new Set(bank().map(q=>q.category||'未分类'))];const types=['全部题型',...new Set(bank().map(q=>q.type).filter(Boolean))];return `<div class="filter-group"><div><strong>知识分类</strong><div class="mode-row">${categories.map(c=>`<button class="pill ${category===c?'selected':''}" data-category="${esc(c)}">${esc(c)}</button>`).join('')}</div></div><div><strong>题目类型</strong><div class="mode-row">${types.map(t=>`<button class="pill ${questionType===t?'selected':''}" data-type="${esc(t)}">${esc(t)}</button>`).join('')}</div></div></div>`}
 function currentAnswerLetters(text,q,optionIndex=null){
@@ -163,17 +167,10 @@ function practiceView(){
   if(index>=session.length)return resultView();
   const q=session[index],done=answeredCount(),complete=done===session.length;
   const title=sessionTitle(mode);
-  return `<div class="practice-layout ${mode==='exam'?'has-nav':''} ${navOpen?'nav-open':''}"><div class="practice-header"><div><div class="eyebrow">INTER-KNOT / TRAINING POST</div><h1>${title}</h1></div><div class="practice-header-actions"><button class="secondary" data-session-summary>本轮总结</button>${mode==='exam'?`<button class="nav-toggle" data-toggle-question-nav aria-expanded="${navOpen}">题号 ${index+1}/${session.length} <span>▦</span></button>`:''}<button class="haptic-toggle" data-haptic-toggle aria-pressed="${hapticsEnabled}">震动 ${hapticsEnabled?'开':'关'}</button><button class="practice-exit" data-stop>退出练习</button></div></div><div class="practice-content"><div class="card question-card knot-card"><div class="knot-post-head"><div class="knot-avatar">题</div><div class="knot-author"><strong>题间 · 数控练习</strong><small>刚刚发布 · ${esc(q.category||'我的题库')}</small></div><span class="knot-post-mark">#${String(index+1).padStart(3,'0')}</span></div><div class="knot-progress"><strong>第 ${index+1} / ${session.length} 题</strong><span>已答 ${done} / ${session.length}</span></div><div class="progress"><div style="width:${done/session.length*100}%"></div></div><div class="question-meta"><span>${esc(q.type||'单选题')}</span>${q.reviewNote?'<span class="review-badge">答案待核查</span>':''}</div><h2 class="question">${esc(q.question)}</h2><div class="question-mark-row"><button class="question-mark ${state.marked[q.id]?'is-marked':''}" data-mark-unknown="${esc(q.id)}" ${state.marked[q.id]?'disabled':''}>${state.marked[q.id]?'✓ 已记入错题本':'◇ 标记不会 · 加入错题本'}</button></div><div class="knot-reply"><div class="knot-reply-label"><span>REPLY</span><strong>选择你的回答</strong><i>⌄</i></div><div class="options">${q.options.map((o,i)=>`<button class="option ${selected===null?'':i===q.answer?'correct':i===selected?'wrong':''}" data-answer="${i}" ${selected===null?'':'disabled'}><span>${q.type==='判断题'?'✓✕'[i]:'ABCDEFGH'[i]||i+1}</span><b>${esc(o)}</b></button>`).join('')}</div></div>${selected!==null?`<div class="knot-analysis-label">INTEL / 答案解析</div>${explanationHtml(q)}`:''}<div class="question-actions"><button class="secondary" data-prev ${index===0?'disabled':''}>← 上一题</button><div class="question-action-right">${index<session.length-1?`<button class="primary" data-next>下一题 →</button>`:!complete?`<button class="primary" data-next>前往未答题 →</button>`:''}${complete?'<button class="primary finish-cta" data-finish>查看结算 →</button>':''}</div></div>${selected===null?'<p class="answer-hint">选择后查看讲解，也可以先跳过。</p>':''}</div>${questionNav()}</div></div>`;
-}
-function mistakes(){
-  const all=bank().filter(q=>state.mistakes[q.id]);
-  if(mistakeDetailId){const q=all.find(item=>item.id===mistakeDetailId);if(q)return `<div class="detail-head"><button class="secondary" data-mistake-back>← 返回错题列表</button><span>${esc(q.category||'未分类')} · ${esc(q.type||'单选题')}</span></div><div class="card panel review-detail"><h2>${esc(q.question)}</h2>${questionReview(q,null)}<div class="button-row"><button class="secondary" data-remove="${esc(q.id)}">移出错题本</button></div></div>`;mistakeDetailId=null}
-  const query=mistakeSearchQuery.trim().toLowerCase();
-  const shown=all.filter(q=>!query||[q.question,...q.options,q.category].some(text=>String(text||'').toLowerCase().includes(query)));
-  return `<div class="hero"><div><div class="eyebrow">REVIEW / ARCHIVE</div><h1>错题本</h1><p>答错和标记不会的题都在这里，可以按题目、选项或知识点搜索。</p></div></div><div class="mistake-toolbar card panel"><div><strong>${all.length} 道待复习</strong><span>其中 ${all.filter(q=>state.marked[q.id]).length} 道标记不会</span></div>${all.length?`<button class="primary" data-start="wrong">复习全部 →</button>`:''}</div><form class="mistake-search-form card panel"><label for="mistake-search">搜索错题</label><div><input id="mistake-search" name="query" type="search" value="${esc(mistakeSearchQuery)}" placeholder="输入题干、选项或知识点" autocomplete="off"><button class="primary" type="submit">搜索</button></div></form>${shown.length?`<div class="mistake-results">${shown.map((q,i)=>`<div class="card mistake-row"><button class="mistake-open" data-mistake-detail="${esc(q.id)}"><span class="mistake-index">${String(i+1).padStart(2,'0')}</span><span><small>${esc(q.category||'未分类')} · ${esc(q.type||'单选题')} ${state.marked[q.id]?'· 标记不会':''}</small><strong>${esc(q.question)}</strong></span><b>›</b></button><button class="mistake-remove" data-remove="${esc(q.id)}">移出</button></div>`).join('')}</div>`:`<div class="card empty"><h2>${all.length?'没有找到相关错题':'错题本还是空的'}</h2><p>${all.length?'试试更短的关键词。':'答错或标记不会的题会自动出现在这里。'}</p>${!all.length?'<button class="primary" data-go="practice">去刷题 →</button>':''}</div>`}`
+  return `<div class="practice-layout ${mode==='exam'?'has-nav':''} ${navOpen?'nav-open':''}"><div class="practice-header"><div><div class="eyebrow">INTER-KNOT / TRAINING POST</div><h1>${title}</h1></div><div class="practice-header-actions"><button class="secondary" data-session-summary>本轮总结</button>${mode==='exam'?`<button class="nav-toggle" data-toggle-question-nav aria-expanded="${navOpen}">题号 ${index+1}/${session.length} <span>▦</span></button>`:''}<button class="haptic-toggle" data-haptic-toggle aria-pressed="${hapticsEnabled}">震动 ${hapticsEnabled?'开':'关'}</button><button class="practice-exit" data-stop>退出练习</button></div></div><div class="practice-content"><div class="card question-card knot-card"><div class="knot-post-head"><div class="knot-avatar">题</div><div class="knot-author"><strong>题间 · 数控练习</strong><small>刚刚发布 · ${esc(q.category||'我的题库')}</small></div><span class="knot-post-mark">#${String(index+1).padStart(3,'0')}</span></div><div class="knot-progress"><strong>第 ${index+1} / ${session.length} 题</strong><span>已答 ${done} / ${session.length}</span></div><div class="progress"><div style="width:${done/session.length*100}%"></div></div><div class="question-meta"><span>${esc(q.type||'单选题')}</span>${q.reviewNote?'<span class="review-badge">答案待核查</span>':''}</div><h2 class="question">${esc(q.question)}</h2><div class="question-mark-row"><button class="question-mark ${isMistakeMarked(q.id,mode)?'is-marked':''}" data-mark-unknown="${esc(q.id)}" ${isMistakeMarked(q.id,mode)?'disabled':''}>${isMistakeMarked(q.id,mode)?'✓ 已记入错题本':'◇ 标记不会 · 加入错题本'}</button></div><div class="knot-reply"><div class="knot-reply-label"><span>REPLY</span><strong>选择你的回答</strong><i>⌄</i></div><div class="options">${q.options.map((o,i)=>`<button class="option ${selected===null?'':i===q.answer?'correct':i===selected?'wrong':''}" data-answer="${i}" ${selected===null?'':'disabled'}><span>${q.type==='判断题'?'✓✕'[i]:'ABCDEFGH'[i]||i+1}</span><b>${esc(o)}</b></button>`).join('')}</div></div>${selected!==null?`<div class="knot-analysis-label">INTEL / 答案解析</div>${explanationHtml(q)}`:''}${autoNextPending?'<p class="auto-next-hint" role="status">答对了，准备进入下一题… <button class="secondary" data-stay-on-question>留在本题</button></p>':''}<div class="question-actions"><button class="secondary" data-prev ${index===0?'disabled':''}>← 上一题</button><div class="question-action-right">${index<session.length-1?`<button class="primary" data-next>下一题 →</button>`:!complete?`<button class="primary" data-next>前往未答题 →</button>`:''}${complete?'<button class="primary finish-cta" data-finish>查看结算 →</button>':''}</div></div>${selected===null?'<p class="answer-hint">选择后查看讲解，也可以先跳过。</p>':''}</div>${questionNav()}</div></div>`;
 }
 function questionReview(q,chosen){return `<div class="review-options">${q.options.map((option,i)=>`<div class="review-option ${i===q.answer?'is-correct':''} ${i===chosen&&chosen!==q.answer?'is-wrong':''}"><span>${q.type==='判断题'?'✓✕'[i]:'ABCDEFGH'[i]||i+1}</span><div>${esc(option)}</div>${i===q.answer?(i===chosen?'<small>你的答案 · 正确</small>':'<small>正确答案</small>'):i===chosen?'<small>你的答案</small>':''}</div>`).join('')}</div>${explanationHtml(q,chosen)}`}
-function settingsView(){return `<div class="hero settings-hero"><div><div class="eyebrow">PREFERENCES / SETUP</div><h1>设置</h1><p>按自己的习惯调整刷题体验，选择会保存在这台设备。</p></div></div><div class="settings-list"><section class="card settings-card"><div><h2>震动反馈</h2><p>作答和点按时使用手机震动。</p></div><button class="settings-switch" data-setting-haptics role="switch" aria-checked="${hapticsEnabled}">${hapticsEnabled?'已开启':'已关闭'}</button></section><section class="card settings-card"><div><h2>界面动效</h2><p>题卡切换和操作时的动画。关闭后仍保留必要的状态提示。</p></div><button class="settings-switch" data-setting-motion role="switch" aria-checked="${motionEnabled}">${motionEnabled?'已开启':'已关闭'}</button></section><section class="card settings-card settings-font"><div><h2>题目字号</h2><p>调整题干、选项及解析的阅读大小。</p></div><div class="settings-font-options" role="group" aria-label="题目字号">${[['standard','标准'],['large','较大'],['extra','特大']].map(([value,label])=>`<button data-setting-font="${value}" class="${fontSize===value?'active':''}" aria-pressed="${fontSize===value}">${label}</button>`).join('')}</div></section><section class="card settings-card"><div><h2>学习记录</h2><p>已保存 ${state.sessions.length} 轮答题、${Object.keys(state.mistakes).length} 道待复习题。离线时会继续保存在本机。</p></div><button class="secondary" data-setting-space>查看我的空间 →</button></section></div>`}
+function settingsView(){return `<div class="hero settings-hero"><div><div class="eyebrow">PREFERENCES / SETUP</div><h1>设置</h1><p>按自己的习惯调整刷题体验，选择会保存在这台设备。</p></div></div><div class="settings-list"><section class="card settings-card"><div><h2>答对自动下一题</h2><p>答对后约 0.4 秒进入下一道未答题，全部完成后自动结算。答错时停留查看解析。</p></div><button class="settings-switch" data-setting-auto-next role="switch" aria-checked="${autoNextEnabled}">${autoNextEnabled?'已开启':'已关闭'}</button></section><section class="card settings-card"><div><h2>震动反馈</h2><p>作答和点按时使用手机震动。</p></div><button class="settings-switch" data-setting-haptics role="switch" aria-checked="${hapticsEnabled}">${hapticsEnabled?'已开启':'已关闭'}</button></section><section class="card settings-card"><div><h2>界面动效</h2><p>题卡切换和操作时的动画。关闭后仍保留必要的状态提示。</p></div><button class="settings-switch" data-setting-motion role="switch" aria-checked="${motionEnabled}">${motionEnabled?'已开启':'已关闭'}</button></section><section class="card settings-card settings-font"><div><h2>题目字号</h2><p>调整题干、选项及解析的阅读大小。</p></div><div class="settings-font-options" role="group" aria-label="题目字号">${[['standard','标准'],['large','较大'],['extra','特大']].map(([value,label])=>`<button data-setting-font="${value}" class="${fontSize===value?'active':''}" aria-pressed="${fontSize===value}">${label}</button>`).join('')}</div></section><section class="card settings-card"><div><h2>学习记录</h2><p>已保存 ${state.sessions.length} 轮答题、${Object.keys(state.mistakes).length} 道待复习题。离线时会继续保存在本机。</p></div><button class="secondary" data-setting-space>查看我的空间 →</button></section></div>`}
 function libraryView(){
   if(libraryDetailId){const q=bank().find(item=>item.id===libraryDetailId);if(q){const a=state.attempts[q.id];return `<div class="detail-head"><button class="secondary" data-library-back>← 返回搜题</button><span>${esc(q.category||'未分类')} · ${esc(q.type||'单选题')}</span></div><div class="card panel review-detail"><h2>${esc(q.question)}</h2>${questionReview(q,null)}<p class="muted">${a?`你已答过 ${a.total} 次，答对 ${a.correct} 次。`:'你还没有答过这道题。'}</p></div>`}}
   const query=searchQuery.trim().toLowerCase(),matches=bank().filter(q=>(searchType==='全部题型'||q.type===searchType)&&(!query||[q.question,...q.options,q.category,q.id].some(text=>String(text||'').toLowerCase().includes(query))));
@@ -191,7 +188,7 @@ function historyView(){
   const i=historyQuestionIndex,q=byId.get(record.questionIds[i]),chosen=record.answers[i];
   return `<div class="detail-head"><button class="secondary" data-history-back>← 本轮题目</button><span>第 ${i+1} / ${record.questionIds.length} 题</span></div><div class="card panel review-detail">${q?`<div class="question-meta"><span>${esc(q.category||'未分类')}</span><span>${esc(q.type||'单选题')}</span></div><h2>${esc(q.question)}</h2>${chosen===null?`<p class="muted">这道题还没作答。继续本轮答题后再来看解析。</p>`:questionReview(q,chosen)}`:'<p>题目已不在当前题库，请恢复原题库后查看。</p>'}<div class="review-navigation"><button class="secondary" data-history-step="${i-1}" ${i===0?'disabled':''}>← 上一题</button><button class="secondary" data-history-step="${i+1}" ${i===record.questionIds.length-1?'disabled':''}>下一题 →</button></div></div>`
 }
-function leavePractice(){if(session.length&&currentSession?.status==='active')persistSession();session=[];currentSession=null;selected=null;navOpen=false;lastResultAnimatedId=null}
+function leavePractice(){cancelAutoNext();if(session.length&&currentSession?.status==='active')persistSession();session=[];currentSession=null;selected=null;navOpen=false;lastResultAnimatedId=null}
 function setupPageScrubber(){
   const pager=document.querySelector('.pager');
   const match=pager?.querySelector('span')?.textContent.match(/(\d+)\s*\/\s*(\d+)/);
@@ -257,6 +254,8 @@ function bind(){
   document.querySelectorAll('[data-toggle-question-nav]').forEach(b=>b.onclick=()=>{haptic('tap');navOpen=!navOpen;navMotion=navOpen;render();if(navOpen){const scroll=document.querySelector('.question-nav-scroll'),current=scroll?.querySelector('.question-number.current');if(scroll&&current)scroll.scrollTop+=current.getBoundingClientRect().top-scroll.getBoundingClientRect().top-scroll.clientHeight/2}document.querySelector('.nav-bottom-toggle')?.scrollIntoView({behavior:'smooth',block:'start'})});
   document.querySelector('[data-haptic-toggle]')?.addEventListener('click',()=>{hapticsEnabled=!hapticsEnabled;localStorage.setItem('tijian-haptics',hapticsEnabled?'on':'off');if(hapticsEnabled)haptic('tap');render()});
   document.querySelector('[data-settings]')?.addEventListener('click',()=>setView('settings'));
+  document.querySelector('[data-setting-auto-next]')?.addEventListener('click',()=>{cancelAutoNext();autoNextEnabled=!autoNextEnabled;localStorage.setItem('tijian-auto-next',autoNextEnabled?'on':'off');render()});
+  document.querySelector('[data-stay-on-question]')?.addEventListener('click',()=>{cancelAutoNext();render()});
   document.querySelector('[data-setting-space]')?.addEventListener('click',()=>setView('sync'));
   document.querySelector('[data-setting-haptics]')?.addEventListener('click',()=>{hapticsEnabled=!hapticsEnabled;localStorage.setItem('tijian-haptics',hapticsEnabled?'on':'off');if(hapticsEnabled)haptic('tap');render()});
   document.querySelector('[data-setting-motion]')?.addEventListener('click',()=>{motionEnabled=!motionEnabled;localStorage.setItem('tijian-motion',motionEnabled?'on':'off');applyPreferences();render()});
@@ -267,11 +266,11 @@ function bind(){
   document.querySelectorAll('[data-answer]').forEach(b=>b.onclick=()=>answer(Number(b.dataset.answer)));
   document.querySelector('[data-mark-unknown]')?.addEventListener('click',event=>{
     const id=event.currentTarget.dataset.markUnknown;
-    if(state.marked[id])return;
-    state.marked[id]=true;state.mistakes[id]=true;
+    if(isMistakeMarked(id,mode))return;
+    addMistake(id,mode,true);
     currentSession.markedQuestionIds=[...new Set([...(currentSession.markedQuestionIds||[]),id])];
     persistSession();haptic('tap');
-    window.TijianSync?.record(id,'seed',0,0,'add');render();
+    window.TijianSync?.record(id,'seed',0,0,'add',mode);render();
   });
   document.querySelector('[data-prev]')?.addEventListener('click',()=>goToQuestion(index-1));
   document.querySelector('[data-next]')?.addEventListener('click',()=>goToQuestion(index<session.length-1?index+1:answers.findIndex(answer=>answer===null)));
@@ -296,7 +295,7 @@ function bind(){
   document.querySelector('[data-history-back]')?.addEventListener('click',()=>{historyQuestionIndex=null;render()});
   document.querySelectorAll('[data-history-question]').forEach(b=>b.onclick=()=>{historyQuestionIndex=Number(b.dataset.historyQuestion);render();window.scrollTo({top:0,behavior:'smooth'})});
   document.querySelectorAll('[data-history-step]').forEach(b=>b.onclick=()=>{historyQuestionIndex=Number(b.dataset.historyStep);render();window.scrollTo({top:0,behavior:'smooth'})});
-  document.querySelectorAll('[data-remove]').forEach(b=>b.onclick=()=>{delete state.mistakes[b.dataset.remove];delete state.marked[b.dataset.remove];if(mistakeDetailId===b.dataset.remove)mistakeDetailId=null;save();window.TijianSync?.record(b.dataset.remove,'remove',0,0,'remove');render()});
+
   document.querySelector('#upload-button')?.addEventListener('click',()=>document.querySelector('#file-input').click());
   document.querySelector('#paste-import')?.addEventListener('submit',event=>{
     event.preventDefault();
@@ -310,7 +309,54 @@ function bind(){
   document.querySelector('[data-clear]')?.addEventListener('click',()=>{state.custom=[];save();libraryDetailId=null;render()})
 }
 function bindFilters(){document.querySelectorAll('[data-category]').forEach(b=>b.onclick=()=>{category=b.dataset.category;render()});document.querySelectorAll('[data-type]').forEach(b=>b.onclick=()=>{questionType=b.dataset.type;render()})}
-function answer(i){if(answers[index]!==null)return;const q=session[index];haptic(i===q.answer?'correct':'wrong');answerMotion=true;answers[index]=i;selected=i;const a=state.attempts[q.id]||{total:0,correct:0};a.total++;if(i===q.answer){a.correct++;sessionCorrect++;if(mode==='wrong'&&!state.marked[q.id])delete state.mistakes[q.id]}else state.mistakes[q.id]=true;state.attempts[q.id]=a;persistSession();window.TijianSync?.record(q.id,'answer',1,i===q.answer?1:0,i===q.answer&&mode==='wrong'&&!state.marked[q.id]?'remove':i===q.answer?null:'add');render()}
+function cancelAutoNext(){
+  clearTimeout(autoNextTimer);
+  autoNextTimer=null;
+  autoNextPending=null;
+}
+function queueAutoNext(){
+  if(!autoNextEnabled)return;
+  const roundId=currentSession.id,questionIndex=index,scheduledAt=Date.now();
+  autoNextPending={roundId,questionIndex};
+  autoNextTimer=setTimeout(()=>{
+    cancelAutoNext();
+    if(view!=='practice'||currentSession?.id!==roundId||index!==questionIndex)return;
+    if(document.hidden||Date.now()-scheduledAt>1500){render();return}
+    if(answeredCount()===session.length){finishSession();return}
+    for(let offset=1;offset<session.length;offset++){
+      const target=(questionIndex+offset)%session.length;
+      if(answers[target]===null){goToQuestion(target);return}
+    }
+  },400);
+}
+function answer(choice){
+  if(view!=='practice'||currentSession?.status!=='active'||answers[index]!==null)return;
+  const question=session[index];
+  if(!Number.isInteger(choice)||choice<0||choice>=question.options.length)return;
+  cancelAutoNext();
+  const correct=choice===question.answer;
+  haptic(correct?'correct':'wrong');
+  answerMotion=true;
+  answers[index]=choice;selected=choice;
+  const attempts=state.attempts[question.id]||{total:0,correct:0};
+  attempts.total++;
+  let removed=[];
+  if(correct){
+    attempts.correct++;sessionCorrect++;
+    if(mode==='wrong')removed=clearResolvedMistakes(question.id,currentSession.mistakeSourceMode||'all');
+  }else addMistake(question.id,mode);
+  state.attempts[question.id]=attempts;
+  persistSession();
+  window.TijianSync?.record(question.id,'answer',1,correct?1:0,
+    correct?(removed.length?'remove':null):'add',correct?removed[0]:mode);
+  removed.slice(1).forEach(scope=>window.TijianSync?.record(question.id,'remove',0,0,'remove',scope));
+  if(correct)queueAutoNext();
+  render();
+}
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden){cancelAutoNext();if(currentSession?.status==='active')persistSession()}
+  else if(view==='practice')render();
+});
 function parseNative(rows,sheet){const out=[];rows.forEach((row,n)=>{const type=String(row[11]||'').trim();if(!['单选题','判断题'].includes(type))return;const question=String(row[1]||'').trim();if(!question)return;let options,answer;if(type==='判断题'){const truth=String(row[10]||'').trim();if(!['√','×'].includes(truth))return;options=['正确','错误'];answer=truth==='√'?0:1}else{const raw=row.slice(2,10).map(v=>String(v??'').trim()).filter(Boolean);if(raw.length<2)return;const offset=(n*7+3)%raw.length;options=raw.slice(offset).concat(raw.slice(0,offset));answer=options.indexOf(raw[0])}out.push({id:`u-${sheet}-${n}`,question,options,answer,explanation:String(row[19]||'').trim(),category:String(row[36]||'').trim()||'未分类',type})});return out}
 function importPanel(){
   const draft=importDraft;
@@ -380,7 +426,7 @@ document.querySelector('#file-input').addEventListener('change',async event=>{
     previewImport(source,format);
   }catch(error){importBusy=false;importError=error.message||'无法读取文件。';render()}
 });
-document.querySelector('.brand')?.addEventListener('click',event=>{event.preventDefault();leavePractice();setView('home')});document.querySelectorAll('.nav-item').forEach(b=>b.onclick=()=>{leavePractice();if(b.dataset.view==='history'){historySessionId=null;historyQuestionIndex=null}setView(b.dataset.view)});const baseRender=render;render=function(){baseRender();bindFilters()};render();enableBackGestures();
+document.querySelector('.brand')?.addEventListener('click',event=>{event.preventDefault();leavePractice();setView('home')});document.querySelectorAll('.nav-item').forEach(b=>b.onclick=()=>{leavePractice();if(b.dataset.view==='history'){historySessionId=null;historyQuestionIndex=null}setView(b.dataset.view)});const baseRender=render;render=function(){baseRender();bindFilters()};initializeMistakeGroups();render();enableBackGestures();
 
 
 

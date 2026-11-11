@@ -494,6 +494,23 @@ body[data-view="practice"] .knot-card .question-actions .finish-cta:hover{backgr
 .review-navigation{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .review-navigation>span{color:#c3c6cf;font-size:12px}
 .history-actions{flex-wrap:wrap}
+.mistake-mode-panel{margin-bottom:16px}
+.mistake-mode-panel h2{margin:0 0 14px}
+.mistake-mode-tabs{display:flex;gap:8px;flex-wrap:wrap}
+.mistake-mode-tabs .pill{min-height:42px}
+.mistake-mode-tabs .pill b{margin-left:5px;font-variant-numeric:tabular-nums}
+.mistake-mode-tabs .pill.selected{background:#a8c8ff;border-color:#a8c8ff;color:#101c35}
+.mistake-source-badges{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px}
+.mistake-source-badges>span{display:inline-block;padding:3px 7px;border:1px solid #66748c;border-radius:5px;background:#273345;color:#c5dbff;font-size:10px;line-height:1.4}
+.mistake-open .mistake-source-badges{display:flex}
+.mistake-remove{min-width:72px;min-height:42px;white-space:nowrap}
+.auto-next-hint{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:16px 22px;color:#d2e3ff;font-size:12px}
+.auto-next-hint .secondary{min-height:40px;padding:7px 12px;font-size:12px}
+@media(max-width:700px){
+  .mistake-mode-panel{padding:16px}
+  .mistake-mode-tabs .pill{padding:8px 11px;font-size:12px}
+  .auto-next-hint{margin:13px 16px}
+}
 @media(prefers-reduced-motion:reduce){
   #app.motion-enter .result-rank,#app.motion-enter .result-hero-copy,#app.motion-enter .result-stats,
   #app.motion-enter .result-progress div,#app.motion-enter .result-focus,#app.motion-enter .result-review,
