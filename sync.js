@@ -28,10 +28,12 @@
     for(const remote of items||[]){
       const local=state.sessions.find(s=>s.id===remote.id);
       if(!local){state.sessions.push({...remote,dirty:false});continue}
+      const markedQuestionIds=[...new Set([...(local.markedQuestionIds||[]),...(remote.markedQuestionIds||[])])];
       if(local.dirty){
         remote.answers.forEach((answer,i)=>{if(local.answers[i]===null&&answer!==null)local.answers[i]=answer});
-        if(remote.status==='finished'&&local.answers.every(answer=>answer!==null)){local.status='finished';local.finishedAt=remote.finishedAt;if(Number.isInteger(remote.score))local.score=remote.score;if(Number.isInteger(remote.correctCount))local.correctCount=remote.correctCount}
+        if(remote.status==='finished'&&local.answers.every(answer=>answer!==null)){local.status='finished';local.finishedAt=remote.finishedAt;if(Number.isFinite(remote.score))local.score=remote.score;if(Number.isInteger(remote.correctCount))local.correctCount=remote.correctCount}
       }else Object.assign(local,remote,{dirty:false});
+      if(local.markedQuestionIds||remote.markedQuestionIds)local.markedQuestionIds=markedQuestionIds;
       if(currentSession===local&&view==='practice'){
         answers=[...local.answers];selected=answers[index];
         sessionCorrect=answers.reduce((count,answer,i)=>count+(answer!==null&&answer===session[i]?.answer?1:0),0);
