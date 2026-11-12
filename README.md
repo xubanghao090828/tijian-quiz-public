@@ -3,8 +3,12 @@
 数控题库刷题网页与荣耀 Android 应用。内置 1,460 道题及解析，可离线刷题，无需登录。
 
 - [打开网页](https://xubanghao090828.github.io/tijian-quiz-public/)
-- [下载 Android 1.21.0 APK](https://xubanghao090828.github.io/tijian-quiz-public/Tijian-Honor-offline-v1.21.0.apk)
+- [下载 Android 1.22.0 APK](https://xubanghao090828.github.io/tijian-quiz-public/Tijian-Honor-offline-v1.22.0.apk)
 - [版本发布页](https://github.com/xubanghao090828/tijian-quiz-public/releases)
+
+## 1.22.0 Motion 动效重做
+
+复用 [Motion](https://github.com/motiondivision/motion) 的免费 JS 引擎（MIT），用短位移弹簧交接原位按钮和底部胶囊。切题采用分段淡化与短位移，避免新旧文字重叠，取消长解析的深复制；支持中断、快速点击与减少动态效果。依赖随应用离线内置，原许可证和来源见 vendor/motion-LICENSE.txt、motion-SOURCE.txt。
 
 ## 1.21.0 紧凑答题页与滑动操作栏
 

@@ -1,0 +1,8 @@
+Motion 14.12.0 (MIT), free JavaScript animation engine.
+Repository: https://github.com/motiondivision/motion
+Archive: https://registry.npmjs.org/motion/-/motion-14.12.0.tgz
+NPM integrity: sha512-cxD0c0yGXo/mzPgveXMsXGl138UNsRit9XgInK8kThtDsrvIkhlAR9b6WYoAm7EmKWToMFx6v/G8i0Zjv+2uoA==
+File: package/dist/motion.js; vendored unmodified. Original MIT license retained.
+No Motion+ components, premium examples or runtime CDN downloads used.
+Used APIs: animate(), physics spring, interruption controls.
+SHA-256: a18fc08eb11c67658b34270bb71bc4ba806c87dbc1b720d7acd38c437844eee7
