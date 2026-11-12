@@ -494,6 +494,16 @@ body[data-view="practice"] .knot-card .question-actions .finish-cta:hover{backgr
 .review-navigation{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .review-navigation>span{color:#c3c6cf;font-size:12px}
 .history-actions{flex-wrap:wrap}
+.settings-card.haptic-custom{display:grid;gap:14px}
+.haptic-custom label{font-size:13px;font-weight:800}
+.haptic-custom>label{display:flex;align-items:center;justify-content:space-between}
+.haptic-custom output{color:#b7d4ff;font-variant-numeric:tabular-nums}
+.haptic-custom input[type="range"]{width:100%;min-height:36px;accent-color:#a8c8ff}
+.haptic-custom>p{margin:0;color:#b9c4d6;font-size:12px;line-height:1.6}
+.haptic-pattern-row{display:grid;grid-template-columns:minmax(75px,1fr) minmax(85px,1fr) auto;align-items:center;gap:10px}
+.haptic-pattern-row select{min-height:44px;padding:8px;border:1px solid #7a8baa;border-radius:8px;background:#24324a;color:#ecf3ff;font:inherit}
+.haptic-pattern-row .secondary{min-height:44px;padding:8px 15px}
+.haptic-pattern-row .settings-switch{justify-self:start}
 .knot-card{position:relative}
 .question-scene{display:flow-root;position:relative}
 .question-scene-ghost{position:absolute;left:0;right:0;z-index:4;margin:0;background:#202126;pointer-events:none;user-select:none;will-change:transform,opacity}
