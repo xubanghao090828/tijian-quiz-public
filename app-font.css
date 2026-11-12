@@ -1,0 +1,25 @@
+@font-face {
+  font-family: 'Tijian Hongmeng';
+  src: url('fonts/inpin-hongmengti.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+:root {
+  --system-app-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+  --app-font: 'Tijian Hongmeng', var(--system-app-font);
+}
+:root[data-font-family='system'] { --app-font: var(--system-app-font); }
+html, body, body *, body *::before, body *::after {
+  font-family: var(--app-font) !important;
+  font-synthesis: style;
+}
+.settings-card.font-family-card { display: grid; gap: 16px; }
+.font-family-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.font-family-options button { min-height: 76px; min-width: 0; padding: 14px 12px; border: 2px solid #626b7e; border-radius: 12px; background: #202631; color: #e6edfa; text-align: left; font-size: 15px; font-weight: 800; }
+.font-family-options button.active { border-color: #a8c8ff; background: #243b63; box-shadow: inset 0 0 0 1px #a8c8ff; }
+.font-family-options button small { display: block; margin-top: 6px; color: #b8c5db; font-size: 11px; font-weight: 400; line-height: 1.5; }
+.font-family-preview { min-width: 0; padding: 18px; border: 1px solid #68758d; border-radius: 12px; background: #171c26; color: #f3f6fc; overflow-wrap: anywhere; }
+.font-family-preview strong { font-size: 22px; }
+.font-family-preview p { margin: 10px 0 0; font-size: 14px; line-height: 1.8; }
+.font-family-status { margin: 0; color: #b9c8e1; font-size: 12px; line-height: 1.6; }

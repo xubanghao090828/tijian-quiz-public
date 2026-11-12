@@ -3,8 +3,12 @@
 数控题库刷题网页与荣耀 Android 应用。内置 1,460 道题及解析，可离线刷题，无需登录。
 
 - [打开网页](https://xubanghao090828.github.io/tijian-quiz-public/)
-- [下载 Android 1.18.0 APK](https://xubanghao090828.github.io/tijian-quiz-public/Tijian-Honor-offline-v1.18.0.apk)
+- [下载 Android 1.19.0 APK](https://xubanghao090828.github.io/tijian-quiz-public/Tijian-Honor-offline-v1.19.0.apk)
 - [版本发布页](https://github.com/xubanghao090828/tijian-quiz-public/releases)
+
+## 1.19.0 全局字体与应用内切换
+
+默认使用用户提供的印品鸿蒙体，覆盖导航、刷题、解析与结算。设置中可即时切换绝区零字体或系统字体，预览效果并保存到本机。字体内置于 APK 并纳入网页离线缓存。
 
 ## 1.18.0 更清晰的切题与增强震感
 
