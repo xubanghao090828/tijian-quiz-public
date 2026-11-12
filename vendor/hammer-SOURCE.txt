@@ -1,0 +1,8 @@
+Hammer.js touch-input layer
+Source: https://github.com/hammerjs/hammer.js/tree/v2.0.8
+Downloaded file: https://raw.githubusercontent.com/hammerjs/hammer.js/v2.0.8/hammer.js
+License: MIT; original license and headers retained in hammer-LICENSE.txt and source.
+The upstream v2.0.8 tag file retains its v2.0.7 banner/version; it has not been rewritten.
+No runtime CDN, no additional runtime dependency.
+Only the normalized TouchInput events are consumed. Quiz actions, cancellation guards and finger-count rules are local code.
+SHA-256: 18c777ac5c4c0cd9cce49404a6228b2e5f244ab0ee1b97a0a9c864ef9f33e7d8

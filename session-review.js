@@ -117,7 +117,7 @@ function resultView(record = currentSession) {
     <p class="result-rule">${finished ? '按答对题数折算百分制 · S ≥ 90 / A ≥ 80 / B ≥ 70 / C ≥ 60'
       : '总结按已答题统计，未答题单独计数。进度保留，随时可继续。'}</p>
     ${stats.unavailable ? `<p class="review-warning">${stats.unavailable} 道题已不在当前题库，恢复原题库后可查看对应解析。</p>` : ''}
-    ${sequentialSummaryHtml(record,stats)}<section class="result-focus"><div class="result-section-head"><span>REPORT / 题型表现</span><strong>看看哪类题需要加强</strong></div>
+    ${studyTimeSummaryHtml(record,answered)}${sequentialSummaryHtml(record,stats)}<section class="result-focus"><div class="result-section-head"><span>REPORT / 题型表现</span><strong>看看哪类题需要加强</strong></div>
       <table class="result-type-table"><thead><tr><th scope="col">题型</th><th scope="col">已答 / 总数</th><th scope="col">答对</th><th scope="col">答错</th><th scope="col">正确率</th></tr></thead><tbody>${typeHtml}</tbody></table>
     </section>
     <section class="result-focus"><div class="result-section-head"><span>INTEL / 改进方向</span><strong>${focus.length ? '优先突破这些知识点' : '继续巩固已学知识'}</strong></div>${focusHtml}${missed.length||record.weakCategories?.length?`<p class="muted">从现有题库抽取薄弱分类的题，优先本轮未出现的题，最多 50 道。</p><button class="result-action-outline" data-weakness-paper="${esc(record.id)}">按薄弱分类组复习卷 →</button>`:''}</section>
@@ -182,7 +182,7 @@ function reviewQuestionHtml(row, record) {
   }
   const chosenText = row.chosen === null ? '未作答' : question.options[row.chosen] ?? '选项已失效';
   return `<div class="review-answer-summary"><p>你的答案 <strong>${esc(chosenText)}</strong></p>
-    <p>正确答案 <strong>${esc(question.options[question.answer])}</strong></p></div>${questionReview(question, row.chosen)}`;
+    <p>正确答案 <strong>${esc(question.options[question.answer])}</strong></p></div>${questionReview(question, row.chosen,false)}`;
 }
 
 function reviewCard(row, record, whole) {
@@ -191,7 +191,8 @@ function reviewCard(row, record, whole) {
     <div class="review-question-meta"><span>${record.mode==='sequential'?'题库第 '+sessionQuestionNumber(record,row.index)+' 题 · 本轮 ':'第 '}${row.index+1} / ${record.questionIds.length} 题</span>
       <span class="review-status is-${row.status}">${labels[row.status]}</span>${row.marked ? '<span class="review-status">◇ 已标记</span>' : ''}</div>
     <div class="question-meta"><span>${esc(row.question?.type || '题目缺失')}</span><span>${esc(row.question?.category || '未分类')}</span></div>
-    <h2>${esc(row.question?.question || '题目已不在当前题库')}</h2>${reviewQuestionHtml(row, record)}
+    ${record.timerCounters ? `<p class="muted">本题累计用时 ${formatStudyTime(studyTimeMs(record,row.index))}</p>` : ''}
+    <h2>${esc(row.question?.question || '题目已不在当前题库')}</h2>${questionAttemptsHtml(row.id)}${reviewQuestionHtml(row, record)}
     ${whole ? `<button class="secondary" data-review-question="${row.index}">单独回顾这道题 →</button>` : ''}
   </article>`;
 }

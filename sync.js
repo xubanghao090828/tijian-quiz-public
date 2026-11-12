@@ -35,14 +35,17 @@
     if(navigator.onLine)sync();
   }
   function mergeRemoteSessions(items){
+    flushStudyTimer();
     for(const remote of items||[]){
       const local=state.sessions.find(s=>s.id===remote.id);
       if(!local){state.sessions.push({...remote,dirty:false});continue}
+      const timerCounters=local.timerCounters||remote.timerCounters?mergeTimerCounters(local.timerCounters,remote.timerCounters):null;
       const markedQuestionIds=[...new Set([...(local.markedQuestionIds||[]),...(remote.markedQuestionIds||[])])];
       if(local.dirty){
         remote.answers.forEach((answer,i)=>{if(local.answers[i]===null&&answer!==null)local.answers[i]=answer});
         if(remote.status==='finished'&&local.answers.every(answer=>answer!==null)){local.status='finished';local.finishedAt=remote.finishedAt;if(Number.isFinite(remote.score))local.score=remote.score;if(Number.isInteger(remote.correctCount))local.correctCount=remote.correctCount}
       }else Object.assign(local,remote,{dirty:false});
+      if(timerCounters)local.timerCounters=timerCounters;
       if(local.markedQuestionIds||remote.markedQuestionIds)local.markedQuestionIds=markedQuestionIds;
       if(currentSession===local&&view==='practice'){
         answers=[...local.answers];selected=answers[index];
