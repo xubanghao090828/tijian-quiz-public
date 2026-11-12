@@ -92,7 +92,7 @@
   async function pause(){paused=true;if(running)await running}
   function resume(){paused=false;sync()}
   window.TijianSync={record,rememberAnswer,sync,api,profile,auth,ensureDevice,persistProfile,deviceName,rebuild,readCloud,snapshot,pause,resume,refresh,getStatus:()=>status,viewHtml:()=>'',bind:()=>{}};
-  ensureEvents();rebuild();window.addEventListener('online',sync);setTimeout(sync,700);
+  ensureEvents();rebuild();refresh();window.addEventListener('online',sync);setTimeout(sync,700);
   setInterval(()=>{if(!document.hidden)sync()},30000);
   if('serviceWorker'in navigator&&location.protocol==='https:')navigator.serviceWorker.register('./service-worker.js').catch(()=>{});
 })();
