@@ -344,6 +344,7 @@ function answer(choice){
   haptic(correct?'correct':'wrong');
   answerMotion=true;
   answers[index]=choice;selected=choice;
+  window.TijianSync?.rememberAnswer(currentSession,index,choice);
   const attempts=state.attempts[question.id]||{total:0,correct:0};
   attempts.total++;
   const wasTracked=Boolean(state.mistakes[question.id]);

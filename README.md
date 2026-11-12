@@ -3,8 +3,14 @@
 数控题库刷题网页与荣耀 Android 应用。内置 1,460 道题及解析，可离线刷题，无需登录。
 
 - [打开网页](https://xubanghao090828.github.io/tijian-quiz-public/)
-- [下载 Android 1.22.0 APK](https://xubanghao090828.github.io/tijian-quiz-public/Tijian-Honor-offline-v1.22.0.apk)
+- [下载 Android 1.23.0 APK](https://github.com/xubanghao090828/tijian-quiz-public/releases/download/v1.23.0/Tijian-Honor-offline-v1.23.0.apk)
 - [版本发布页](https://github.com/xubanghao090828/tijian-quiz-public/releases)
+
+## 1.23.0 扫码配对与双端记录合并
+
+我的空间提供十分钟临时码、二维码、扫码或图片识别；原设备核对四位数字后允许连接，新设备先查看合并预览，再自动备份并合并两边记录。答题事件按唯一编号去重，历史轮次合并；同轮同题不同答案保留双方版本，在“同步冲突”中查看。设备独立凭证、命名、最近连接与单独解绑；备份可下载、导入和恢复为独立空间。
+
+两台都升级后：原设备生成临时码 → 另一台扫码/输入 → 原设备允许 → 另一台确认备份并合并。覆盖安装，不要先卸载。离线继续刷题，联网同步；旧长配对码兼容。各设备设置各自保留，自导入题库暂不自动跨设备传输。
 
 ## 1.22.0 Motion 动效重做
 

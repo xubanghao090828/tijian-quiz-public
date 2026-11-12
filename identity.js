@@ -1,7 +1,7 @@
 (function(){
   const active='tijian-active-profile';
   let profile;try{profile=JSON.parse(localStorage.getItem(active))}catch{}
-  if(!profile?.id||!profile?.secret){
+  if(!profile?.id||(!profile?.secret&&!profile?.deviceToken)){
     const bytes=crypto.getRandomValues(new Uint8Array(32));
     const secret=btoa(String.fromCharCode(...bytes)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
     profile={id:crypto.randomUUID(),secret,deviceId:crypto.randomUUID()};

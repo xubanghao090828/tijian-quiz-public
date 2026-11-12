@@ -1,0 +1,12 @@
+QR generation: Nayuki QR-Code-generator, MIT, commit bcfe1b018cec5f1f91b5705eca5bb4cdd34e9f8d
+Source: https://raw.githubusercontent.com/nayuki/QR-Code-generator/bcfe1b018cec5f1f91b5705eca5bb4cdd34e9f8d/typescript-javascript/qrcodegen.ts
+TypeScript source SHA256: 1dc03fb5a10e0e2318ea162755bbdb9977ca6ce52cff959e9c9b6deafdccda9c
+Transpiled with Node 24.22.1 built-in stripTypeScriptTypes (transform mode). No application-specific source changes. Full upstream MIT notice retained.
+
+QR decoding: jsQR 1.4.0, Apache-2.0, unmodified upstream distribution.
+Source: https://github.com/cozmo/jsQR
+Archive: https://registry.npmjs.org/jsqr/-/jsqr-1.4.0.tgz
+Archive SHA512: dxLob7q65Xg2DvstYkRpkYtmKm2sPJ9oFhrhmudT1dZvNFFTlroai3AWSpLey/w5vMcLBXRgOJsbXpdN9HzU/A==
+Distribution SHA256: bc40c8a15196236b2314db0856f72ca0b49980cd5413b8c852a7349f5fee0859
+
+Compiled QR distribution SHA256: 86f1b3c0c3d96f4c3fb3af85c80a9572670bf207201f230a8e708597bd0aa978
