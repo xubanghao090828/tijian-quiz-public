@@ -8,7 +8,8 @@ function loadHapticPreferences() {
   let saved;
   try { saved = JSON.parse(localStorage.getItem('tijian-haptic-preferences')); } catch {}
   return {
-    strength: Number.isFinite(saved?.strength) ? Math.max(0, Math.min(100, saved.strength)) : 60,
+    strength: Number.isFinite(saved?.strength) ? Math.max(0, Math.min(100, saved.strength)) : 90,
+    enhanced: saved?.enhanced !== false,
     correct: HAPTIC_STYLES.some(([value]) => value === saved?.correct) ? saved.correct : 'single',
     wrong: HAPTIC_STYLES.some(([value]) => value === saved?.wrong) ? saved.wrong : 'double',
     tap: saved?.tap !== false
@@ -24,10 +25,13 @@ function getQuizHaptics() {
 
 function hapticPattern(kind) {
   const style = kind === 'tap' ? (hapticPreferences.tap ? 'single' : 'off') : hapticPreferences[kind];
-  const pulse = kind === 'tap' ? 12 : kind === 'correct' ? 18 : 28;
+  const pulse = hapticPreferences.enhanced
+    ? (kind === 'tap' ? 32 : kind === 'correct' ? 55 : 85)
+    : (kind === 'tap' ? 12 : kind === 'correct' ? 18 : 28);
+  const gap = hapticPreferences.enhanced ? 100 : 75;
   if (style === 'off') return [];
-  if (style === 'double') return [pulse, 75, pulse + 10];
-  if (style === 'triple') return [pulse, 60, pulse, 60, pulse + 10];
+  if (style === 'double') return [pulse, gap, pulse + 10];
+  if (style === 'triple') return [pulse, gap, pulse, gap, pulse + 10];
   return [pulse];
 }
 
@@ -42,7 +46,10 @@ function haptic(kind = 'tap') {
   if (kind === 'tap' && Date.now() < hapticProtectedUntil) return;
   const pattern = hapticPattern(kind);
   if (!pattern.length) return;
-  const strength = Math.max(1, Math.round(hapticPreferences.strength * (kind === 'tap' ? .35 : kind === 'correct' ? .65 : 1)));
+  const weight = hapticPreferences.enhanced
+    ? (kind === 'tap' ? .65 : kind === 'correct' ? .95 : 1)
+    : (kind === 'tap' ? .35 : kind === 'correct' ? .65 : 1);
+  const strength = Math.max(1, Math.round(hapticPreferences.strength * weight));
   if (kind !== 'tap') hapticProtectedUntil = Date.now() + pattern.reduce((sum, value) => sum + value, 0) + 45;
   const browserFallback = () => {
     const adjusted = pattern.map((value, i) => i % 2 ? value : Math.max(5, Math.round(value * (.5 + strength / 100))));
@@ -71,7 +78,10 @@ function hapticSettingsHtml() {
     <div><h2>震动强度与节奏</h2><p>${capability}</p></div>
     <label for="haptic-strength">基础强度 <output id="haptic-strength-value">${hapticPreferences.strength}%</output></label>
     <input id="haptic-strength" type="range" min="0" max="100" step="5" value="${hapticPreferences.strength}" aria-label="震动基础强度">
-    <p>答对反馈较轻，答错反馈更清晰。0% 不震动。</p>
+    <p>答对反馈较轻，答错反馈更清晰。0% 不震动；想要更明显，可开启增强震感并调至 100%。</p>
+    <div class="haptic-pattern-row"><span>增强震感</span><button class="settings-switch" data-haptic-enhanced role="switch" aria-checked="${hapticPreferences.enhanced}">${hapticPreferences.enhanced ? '已开启' : '已关闭'}</button></div>
+    <p>增强模式延长脉冲并提高答对、切题反馈力度。荣耀 MagicOS 10 可在系统设置搜索「触感」，检查系统触感反馈及强度；具体选项以手机为准。</p>
+    ${getQuizHaptics() ? '<button class="secondary" data-haptic-system>打开手机声音与触感设置</button><p data-haptic-system-status role="status" hidden></p>' : ''}
     ${[['correct','答对'],['wrong','答错']].map(([kind,label]) => `
       <div class="haptic-pattern-row"><label for="haptic-pattern-${kind}">${label}节奏</label>
         <select id="haptic-pattern-${kind}" data-haptic-pattern="${kind}">${HAPTIC_STYLES.map(([value,name]) =>
@@ -96,6 +106,16 @@ function bindHapticSettings() {
   });
   document.querySelector('[data-haptic-tap]')?.addEventListener('click', () => {
     hapticPreferences.tap = !hapticPreferences.tap; savePreferences(); render();
+  });
+  document.querySelector('[data-haptic-enhanced]')?.addEventListener('click', () => {
+    stopHaptics(); hapticPreferences.enhanced = !hapticPreferences.enhanced; savePreferences(); render();
+  });
+  document.querySelector('[data-haptic-system]')?.addEventListener('click', async () => {
+    try { await getQuizHaptics().openSettings(); }
+    catch {
+      const status = document.querySelector('[data-haptic-system-status]');
+      if (status) { status.hidden = false; status.textContent = '请手动打开手机设置，搜索「触感」或「振动强度」。'; }
+    }
   });
   document.querySelectorAll('[data-haptic-test]').forEach(button => button.onclick = () => haptic(button.dataset.hapticTest));
 }

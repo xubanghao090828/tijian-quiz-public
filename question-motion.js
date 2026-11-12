@@ -35,12 +35,12 @@ function playQuestionMotion(transition, key) {
   const animations = [
     ghost.animate([
       { opacity: 1, transform: 'translate3d(0,0,0)' },
-      { opacity: 0, transform: `translate3d(${-7 * direction}px,0,0)` }
-    ], { duration: 75, easing: 'cubic-bezier(.3,0,.8,1)', fill: 'both' }),
+      { opacity: 0, transform: `translate3d(${-20 * direction}px,0,0)` }
+    ], { duration: 160, easing: 'cubic-bezier(.3,0,.8,1)', fill: 'both' }),
     scene.animate([
-      { opacity: .2, transform: `translate3d(${12 * direction}px,0,0)` },
+      { opacity: .05, transform: `translate3d(${32 * direction}px,0,0)` },
       { opacity: 1, transform: 'translate3d(0,0,0)' }
-    ], { duration: 120, easing: 'cubic-bezier(.16,.8,.3,1)', fill: 'both' })
+    ], { duration: 280, easing: 'cubic-bezier(.22,.61,.36,1)', fill: 'both' })
   ];
   const active = { key, scene, ghost, animations, refresh: false };
   activeQuestionMotion = active;
