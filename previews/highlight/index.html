@@ -1,53 +1,75 @@
 <!doctype html>
 <html lang="zh-CN">
 <head>
+  <base href="../../">
+  <script src="previews/highlight/sandbox.js?v=2"></script>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#101114">
-  <title>题间 · 圈画预览</title>
-  <link rel="icon" href="../../icon.svg">
-  <link rel="stylesheet" href="preview.css?v=1">
+  <meta name="description" content="数控题库刷题应用，支持搜题、随机模拟、离线续做、历史答题和逐题解析。">
+  <title>题间 · 原界面高亮预览</title>
+  <link rel="manifest" href="manifest.webmanifest?v=2">
+  <link rel="icon" href="icon.svg?v=2" type="image/svg+xml">
+  <link rel="preload" href="fonts/inpin-hongmengti.ttf" as="font" type="font/ttf" crossorigin>
+  <script src="app-font.js?v=20261112-pairing2"></script>
+  <link rel="stylesheet" href="styles.css?v=20261110">
+  <link rel="stylesheet" href="redesign.css?v=20261103-zzz12">
+  <link rel="stylesheet" href="terminal.css?v=20261103-zzz12">
+  <link rel="stylesheet" href="arcade.css?v=20261112-pairing2">
+  <link rel="stylesheet" href="study-controls.css?v=20261112-pairing2">
+  <link rel="stylesheet" href="practice-layout.css?v=20261112-pairing2">
+  <link rel="stylesheet" href="app-font.css?v=20261112-pairing2">
+  <link rel="stylesheet" href="sync-space.css?v=20261112-pairing2">
+  <link rel="stylesheet" href="previews/highlight/keyword-settings.css?v=2">
 </head>
-<body>
-  <header class="app-header"><a class="brand" href="../../"><span class="brand-mark">题</span><span>题间 <small>圈画实验室</small></span></a><span class="preview-badge"><i></i>交互预览</span></header>
-  <main>
-    <section class="intro"><div class="eyebrow">READ / MARK / RECALL</div><h1>把关键词，<span>划出来。</span></h1><p>手指横向划过题干，马上高亮。上下滑动仍然翻页。</p></section>
-    <section class="appearance" aria-labelledby="appearance-title">
-      <div class="section-caption"><h2 id="appearance-title">先选一个你喜欢的效果</h2><small>画一笔，再切换对比</small></div>
-      <div class="style-choices" role="radiogroup" aria-label="圈画样式">
-        <button class="style-choice selected" role="radio" aria-checked="true" data-style="marker"><span class="style-example example-marker">一般只能</span><strong>荧光底纹</strong><em>推荐</em></button>
-        <button class="style-choice" role="radio" aria-checked="false" data-style="ink"><span class="style-example example-ink">一般只能</span><strong>文字变色</strong></button>
-        <button class="style-choice" role="radio" aria-checked="false" data-style="both"><span class="style-example example-both">一般只能</span><strong>底纹＋变色</strong></button>
-      </div>
-    </section>
-    <section class="question-card" aria-label="圈画试用题目">
-      <div class="card-header"><span class="question-avatar">题</span><div><strong>数控练习 · 题干圈画</strong><small id="question-category">演示题目 · 判断题</small></div><span class="question-number" id="question-number">01 / 02</span></div>
-      <div class="reading-area">
-        <div class="question-tools"><span class="question-tag" id="question-type">判断题</span><span class="drag-hint"><i></i>直接划选</span><div class="colors" role="radiogroup" aria-label="圈画颜色"><button class="color-dot selected" style="--swatch:#f3d45c" data-color="yellow" role="radio" aria-checked="true" aria-label="暖黄色"></button><button class="color-dot" style="--swatch:#80ccfa" data-color="blue" role="radio" aria-checked="false" aria-label="浅蓝色"></button><button class="color-dot" style="--swatch:#e9a3ca" data-color="pink" role="radio" aria-checked="false" aria-label="浅粉色"></button></div></div>
-        <p class="question-text" id="question-text" aria-label="可圈画题干"></p>
-        <div class="mark-status"><span id="live-status">在“只能”“CF 存储卡”上划一下试试</span><button class="text-button" id="new-pass">新建一次圈画 <span>↗</span></button></div>
-        <div class="answer-options" id="answer-options"></div><p class="answer-response" id="answer-response" role="status"></p>
-        <div class="brush-actions"><button class="quiet-button" id="undo-stroke" disabled>↶ 撤销一笔</button><button class="quiet-button" id="clear-current" disabled>清除本次</button><span class="privacy-note">此页的操作只用于预览</span></div>
-      </div>
-      <div class="preferences">
-        <label class="switch-row"><span><strong>保存本次圈画</strong><small id="save-description">关闭：本次临时使用</small></span><input type="checkbox" id="save-marks" role="switch"><span class="switch-track" aria-hidden="true"></span></label>
-        <label class="switch-row"><span><strong>显示历史高亮</strong><small id="history-description">关闭只隐藏，记录仍保留</small></span><input type="checkbox" id="show-history" role="switch"><span class="switch-track" aria-hidden="true"></span></label>
-        <button class="history-entry" id="open-history"><span class="history-icon">◷</span><span><strong>选择哪次圈画</strong><small id="history-entry-label">2 份演示记录 · 先预览，再显示</small></span><span class="history-count" id="history-count">2</span><span class="entry-chevron">›</span></button>
-      </div>
-    </section>
-    <nav class="question-navigation" aria-label="预览题目切换"><button class="quiet-button" id="previous-question" disabled>← 上一题</button><span>换题也试试</span><button class="next-button" id="next-question">下一题 →</button></nav>
-    <aside class="guide"><span>✦</span><p><strong>试用建议</strong>先画一笔，比较三种样式；再打开历史列表，预览不同次的圈画。临时圈画在换题或刷新后清除，保存记录留在这个浏览器。</p></aside>
-    <footer>题间 · 设计预览 <span>演示记录不代表你的真实答题历史</span></footer>
-  </main>
-  <dialog id="history-dialog" class="history-dialog" aria-labelledby="history-title">
-    <div class="sheet-handle" aria-hidden="true"></div>
-    <header class="sheet-header"><div><span class="eyebrow">MARK HISTORY</span><h2 id="history-title">选择哪次圈画</h2><p>点记录先预览，确认后再显示到题干。</p></div><button class="close-button" id="close-history" aria-label="关闭历史预览">×</button></header>
-    <div class="sheet-content"><div class="history-list" id="history-list"></div><section class="history-preview" aria-label="选中记录的圈画预览"><div class="preview-caption"><span>题干预览</span><span id="preview-record-name">请选择一份记录</span></div><p id="history-preview-text"></p><div class="record-summary" id="record-summary"></div></section></div>
-    <footer class="sheet-footer"><button class="quiet-button" id="cancel-history">暂不更换</button><button class="apply-button" id="apply-history" disabled>显示这次圈画 <span>→</span></button></footer>
-  </dialog>
-  <div id="brush-cursor" class="brush-cursor" hidden aria-hidden="true"></div>
-  <div id="toast" class="toast" role="status" hidden></div>
-  <script src="vendor/web-highlighter-0.8.0.js"></script>
-  <script src="preview.js?v=1"></script>
+<body data-view="home">
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="#home" aria-label="题间首页"><span class="brand-mark">题</span><span>题间<small>CNC · QUIZ STATION</small></span></a>
+      <div class="nav-label">主菜单 <b>MENU / 06</b></div>
+      <nav aria-label="主导航">
+        <button class="nav-item active" data-view="home"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10H3z"/><path d="M9 20v-7h6v7"/></svg></span> 总览</button>
+        <button class="nav-item" data-view="practice"><span><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="2.5" width="19" height="19" rx="5"/><path d="m10 7 7 5-7 5z"/></svg></span> 开始刷题</button>
+        <button class="nav-item" data-view="mistakes"><span><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="2.5" width="19" height="19" rx="5"/><path d="m8 8 8 8m0-8-8 8"/></svg></span> 错题本 <em id="mistake-count">0</em></button>
+        <button class="nav-item" data-view="library"><span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 6 6"/></svg></span> 我的题库</button>
+        <button class="nav-item" data-view="history"><span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg></span> 历史答题</button>
+        <button class="nav-item" data-view="sync"><span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="9"/><path d="M12 1v2m0 18v2M1 12h2m18 0h2"/></svg></span> 我的空间</button>
+      </nav>
+      <div class="sidebar-bottom"><div class="sidebar-note"><span class="note-spark">● OFFLINE READY</span><strong>进度已记录</strong><p>离线刷题，联网后同步。</p></div><div class="side-footer">TIJIAN / STUDY SYSTEM</div></div>
+    </aside>
+    <main class="main">
+      <header class="topbar"><div class="breadcrumb"><span class="crumb-line"></span><span class="breadcrumb-label">题间 / 学习终端</span><span>/</span><strong id="page-name">总览</strong></div><div class="topbar-status"><span class="status-light"></span>离线可用 <i></i><span class="today" id="today-label"></span></div></header>
+      <div id="app" aria-live="polite"></div>
+    </main>
+  </div>
+  <input id="file-input" type="file" accept=".xlsx,.xls,.csv,.tsv,.json,.txt,application/json" hidden>
+  <script src="xlsx.full.min.js"></script>
+  <script src="explain.js"></script>
+  <script src="questions.js"></script>
+  <script src="identity.js"></script>
+  <script src="question-import.js?v=20261110"></script>
+  <script src="vendor/ts-fsrs-6.0.0.umd.js"></script>
+  <script src="memory-scheduler.js?v=20261112-pairing2"></script>
+  <script src="mistake-book.js?v=20261112-pairing2"></script>
+  <script src="session-review.js?v=20261112-pairing2"></script>
+  <script src="sequential-progress.js?v=20261112-pairing2"></script>
+  <script src="question-motion.js?v=20261112-pairing2"></script>
+  <script src="haptic-settings.js?v=20261112-pairing2"></script>
+  <script src="vendor/hammer-2.0.8.js"></script>
+  <script src="question-attempts.js?v=20261112-pairing2"></script>
+  <script src="study-timer.js?v=20261112-pairing2"></script>
+  <script src="practice-gestures.js?v=20261112-pairing2"></script>
+  <script src="vendor/motion-14.12.0.js"></script>
+  <script src="practice-layout.js?v=20261112-pairing2"></script>
+  <script src="app.js?v=20261112-pairing2"></script>
+  <script src="previews/highlight/vendor/web-highlighter-0.8.0.js"></script>
+  <script src="previews/highlight/keyword-preview.js?v=2"></script>
 </body>
 </html>
+
+
+
+
+
+
+
