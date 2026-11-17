@@ -1,0 +1,8 @@
+web-highlighter 0.8.0, MIT, unmodified npm browser distribution.
+Project: https://github.com/alienzhou/web-highlighter
+Archive: https://registry.npmjs.org/web-highlighter/-/web-highlighter-0.8.0.tgz
+Archive integrity: sha512-rnj0Dvi5mjeWfcI4jTgcrci7D7c4lxeqepcYZq2KcobpjGZAGPDwRooi0j+LOpHZGUZEx/nH5eqn4V4ufE4dxg==
+Browser distribution SHA256: ce3cad26b5f918b157934d193eee1d6073bcd855a01573dfb51653be0de9033f
+Both the upstream MIT license and the emitted bundle's license notice are retained.
+The library supplies Range highlighting, wrapper cleanup and restoration primitives.
+The preview implements touch intent detection, glyph hit testing, history snapshots and its isolated local storage.

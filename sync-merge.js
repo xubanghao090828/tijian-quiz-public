@@ -45,7 +45,7 @@
     const mergedCustom=target.custom?.length&&source.custom?.length?[...custom.values()]:[];
     if(!mergedCustom.length)for(const q of custom.values())added.set(q.id,q);
     for(const q of mergedCustom)added.delete(q.id);
-    return {...copy(target),events:[...events.values()],sessions:[...sessions.values()],added:[...added.values()],custom:mergedCustom,memoryCards:{}};
+    return {...copy(target),events:[...events.values()],sessions:[...sessions.values()],added:[...added.values()],custom:mergedCustom,memoryCards:{},highlights:globalThis.TijianHighlights.mergeLists(target.highlights,source.highlights).map(item=>({...item,dirty:item.dirty||(source.highlights||[]).some(s=>s.id===item.id)}))};
   }
   root.TijianMerge={mergeSession,mergeSnapshots,conflicts};
   if(typeof module!=='undefined'&&module.exports)module.exports=root.TijianMerge;

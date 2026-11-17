@@ -55,6 +55,13 @@
       }
     }
     if(remap.size){
+      for(const item of cloned.highlights||[]){
+        item.questionId=remap.get(item.questionId)||item.questionId;
+        const existing=(target.highlights||[]).find(h=>h.id===item.id);
+        if(existing&&(existing.questionId!==item.questionId||existing.text!==item.text)){
+          const id=(await hex(item.id+item.questionId+item.text)).slice(0,32);item.id=`${id.slice(0,8)}-${id.slice(8,12)}-${id.slice(12,16)}-${id.slice(16,20)}-${id.slice(20)}`;
+        }
+      }
       for(const event of cloned.events||[])event.questionId=remap.get(event.questionId)||event.questionId;
       for(const record of cloned.sessions||[]){
         record.questionIds=record.questionIds.map(id=>remap.get(id)||id);record.markedQuestionIds=record.markedQuestionIds?.map(id=>remap.get(id)||id);

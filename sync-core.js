@@ -65,27 +65,34 @@
       try{
         ensureEvents();await ensureDevice();
         let since=Number(state.cursor)||0,sessionSince=Number(state.sessionCursor)||0,more=true;
-        const attemptedSessions=new Set();
+        const attemptedSessions=new Set(),attemptedHighlights=new Set();
+        let highlightSince=Number(state.highlightCursor)||0;
         while(more&&!paused){
           flushStudyTimer();
           const pending=state.events.filter(e=>!e.seq).slice(0,100),rounds=state.sessions.filter(s=>s.dirty&&!attemptedSessions.has(s.id)).slice(0,5),sent=rounds.map(s=>({id:s.id,updatedAt:s.updatedAt}));
           rounds.forEach(s=>attemptedSessions.add(s.id));
-          const data=await api('/api/sync',{since,events:pending,sessionSince,sessionUpdates:rounds.map(({dirty,...record})=>record)});
+          const highlightUpdates=(state.highlights||[]).filter(h=>h.dirty&&!attemptedHighlights.has(h.id)).slice(0,10),highlightSent=highlightUpdates.map(h=>({id:h.id,updatedAt:h.updatedAt}));
+          highlightUpdates.forEach(h=>attemptedHighlights.add(h.id));
+          const data=await api('/api/sync',{since,events:pending,sessionSince,highlightSince,highlightUpdates:highlightUpdates.map(TijianHighlights.clean),sessionUpdates:rounds.map(({dirty,...record})=>record)});
           if(!Number.isInteger(data.sessionCursor))throw Error('同步服务正在更新，请稍后重试');
           const byId=new Map(state.events.map(e=>[e.id,e]));data.events.forEach(e=>byId.set(e.id,{...byId.get(e.id),...e}));state.events=[...byId.values()];
+          if(!Number.isInteger(data.highlightCursor))throw Error('同步服务正在更新，高亮仍保存在本机');
+          state.highlights=TijianHighlights.mergeLists(state.highlights,[...(data.highlights||[]),...(data.highlightAcknowledged||[])]);
+          for(const sent of highlightSent){const local=state.highlights.find(h=>h.id===sent.id),server=(data.highlightAcknowledged||[]).find(h=>h.id===sent.id);if(local&&(local.updatedAt===sent.updatedAt||server&&JSON.stringify(TijianHighlights.clean(local))===JSON.stringify(TijianHighlights.clean(server))))local.dirty=false;}
+          highlightSince=data.highlightCursor;state.highlightCursor=highlightSince;
           since=data.cursor;state.cursor=since;mergeRemoteSessions(data.sessions);rebuild();
           sent.forEach(item=>{const local=state.sessions.find(s=>s.id===item.id);if(local&&local.updatedAt===item.updatedAt)local.dirty=false});
           sessionSince=data.sessionCursor;state.sessionCursor=sessionSince;save();
-          more=data.hasMore||data.sessionHasMore||state.events.some(e=>!e.seq)||state.sessions.some(s=>s.dirty&&!attemptedSessions.has(s.id));
+          more=data.hasMore||data.sessionHasMore||data.highlightHasMore||(state.highlights||[]).some(h=>h.dirty&&!attemptedHighlights.has(h.id))||state.events.some(e=>!e.seq)||state.sessions.some(s=>s.dirty&&!attemptedSessions.has(s.id));
         }
         status=paused?'连接处理中，记录仍在本机保存':'已同步 · '+new Intl.DateTimeFormat('zh-CN',{hour:'2-digit',minute:'2-digit'}).format(new Date());
       }catch(error){status='同步未完成：'+error.message}finally{running=null;refresh();window.dispatchEvent(new Event('tijian-sync-complete'))}
     })();return running;
   }
   async function readCloud(p){
-    const result={events:[],sessions:[],added:[],custom:[],cursor:0,sessionCursor:0};
+    const result={events:[],sessions:[],added:[],custom:[],cursor:0,sessionCursor:0,highlights:[],highlightCursor:0};
     let more=true;
-    while(more){const page=await api('/api/sync',{since:result.cursor,sessionSince:result.sessionCursor},auth(p));result.events.push(...page.events);result.sessions.push(...page.sessions);result.cursor=page.cursor;result.sessionCursor=page.sessionCursor;more=page.hasMore||page.sessionHasMore}
+    while(more){const page=await api('/api/sync',{since:result.cursor,sessionSince:result.sessionCursor,highlightSince:result.highlightCursor},auth(p));result.highlights=TijianHighlights.mergeLists(result.highlights,page.highlights||[]);result.highlightCursor=page.highlightCursor||0;result.events.push(...page.events);result.sessions.push(...page.sessions);result.cursor=page.cursor;result.sessionCursor=page.sessionCursor;more=page.hasMore||page.sessionHasMore||page.highlightHasMore}
     return result;
   }
   function snapshot(){flushStudyTimer();ensureEvents();save();return JSON.parse(JSON.stringify(state))}
