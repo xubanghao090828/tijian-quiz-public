@@ -8,6 +8,10 @@ function sessionQuestionNumber(record, index) {
 }
 
 function sessionRangeLabel(record) {
+  if (record.retryKind) {
+    const label = { all: '重刷本轮', wrong: '历史错题重刷', single: '单题重做' }[record.retryKind] || '历史重刷';
+    return `${label}${record.retryKind === 'single' ? ' · 原第 ' + record.sourceQuestionNumber + ' 题' : ' · ' + record.questionIds.length + ' 题'} · 原记录保留`;
+  }
   if (record.mode === 'sequential') {
     return `本轮范围为题库第 ${sequenceStart(record)}～${sessionQuestionNumber(record, record.questionIds.length - 1)} 题，共 ${record.questionIds.length} 道`;
   }

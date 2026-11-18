@@ -26,8 +26,12 @@
 .attempt-latest { font-size:11px;font-weight:400; }
 .attempt-latest.is-correct { color:#a1e9ca; }.attempt-latest.is-wrong { color:#ffa9a4; }
 .attempt-recent { margin-top:7px;gap:5px 8px;font-size:10px; }.attempt-recent time { color:#8495b0; }
-.attempt-recent-marks { display:inline-flex;gap:4px; }
-.attempt-recent-marks>span { display:grid;place-items:center;width:20px;height:20px;border-radius:5px;font-size:13px; }
+.attempt-recent-marks { display:flex;flex:0 0 100%;flex-wrap:wrap;align-content:flex-start;gap:4px;min-width:0;max-height:140px;overflow:auto;overscroll-behavior:contain;padding:2px;scrollbar-width:thin; }
+.attempt-recent-marks>span { display:grid;place-items:center;flex:0 0 20px;width:20px;height:20px;border-radius:5px;font-size:13px; }
+.attempt-legacy-note { display:block;margin-top:7px;color:#8495b0;font-size:10px; }
+.history-retry-actions { display:flex;flex-wrap:wrap;gap:10px;margin-top:12px; }
+.history-retry-actions .secondary { flex:1 1 150px;min-width:0; }
+.history-retry-note { margin:7px 0 0;font-size:11px;line-height:1.7;color:#aebdd4; }
 .attempt-recent-marks>.is-correct { background:#24453e;color:#a1e9ca; }.attempt-recent-marks>.is-wrong { background:#4f3039;color:#ffb8b3; }
 .attempt-recent small { font-size:10px;color:#8495b0; }
 .paper-question .question-attempts { margin:14px 0; }

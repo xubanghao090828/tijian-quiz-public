@@ -2,6 +2,46 @@ let summarySessionId = null;
 let reviewState = null;
 const REVIEW_PAGE_SIZE = 10;
 
+function retryActionsHtml(record, byId = null) {
+  const questions = byId || new Map(bank().map(q => [q.id, q]));
+  const available = record.questionIds.filter(id => questions.has(id)).length;
+  const wrong = record.questionIds.filter((id, i) => questions.has(id) && Number.isInteger(record.answers[i]) && record.answers[i] !== questions.get(id).answer).length;
+  return `<div class="history-retry-actions" aria-label="历史重刷"><button class="secondary" data-retry-session="${esc(record.id)}" data-retry-kind="all" ${available !== record.questionIds.length ? 'disabled' : ''}>重刷本轮 · ${record.questionIds.length} 题</button><button class="secondary" data-retry-session="${esc(record.id)}" data-retry-kind="wrong" ${wrong ? '' : 'disabled'}>只刷本轮错题 · ${wrong} 题</button></div>${available !== record.questionIds.length ? '<p class="history-retry-note">部分题目已不在当前题库，恢复原题库后可完整重刷。</p>' : ''}`;
+}
+
+function retryQuestionButton(record, questionIndex) {
+  return `<button class="secondary" data-retry-session="${esc(record.id)}" data-retry-kind="single" data-retry-index="${questionIndex}">重新做这道题 →</button>`;
+}
+
+function retrySession(id, kind = 'all', questionIndex = null) {
+  const source = state.sessions.find(record => record.id === id);
+  if (!source || !['all', 'wrong', 'single'].includes(kind)) return;
+  if (kind === 'single' && (!Number.isInteger(questionIndex) || questionIndex < 0 || questionIndex >= source.questionIds.length)) return;
+  const rows = sessionRows(source).filter(row => kind === 'all' || (kind === 'wrong' ? row.status === 'wrong' : row.index === questionIndex));
+  if (!rows.length || rows.some(row => !row.question)) return;
+  // Starting a retry must never clear answers, timers or scores on the source round.
+  leavePractice();
+  mode = kind === 'all' ? source.mode : 'wrong';
+  session = rows.map(row => row.question); answers = session.map(() => null);
+  index = 0; selected = null; sessionCorrect = 0; sessionError = ''; navOpen = false;
+  const now = Date.now();
+  currentSession = {
+    id: crypto.randomUUID(), mode, retryKind: kind, sourceSessionId: source.id,
+    sourceSessionMode: source.mode, sourceSessionCreatedAt: source.createdAt,
+    ...(kind === 'single' ? { sourceQuestionNumber: sessionQuestionNumber(source, questionIndex) } : {}),
+    ...(mode === 'sequential' ? { rangeStart: sequenceStart(source), bankTotal: source.bankTotal || bank().length } : {}),
+    ...(mode === 'order' ? { categoryFilter: source.categoryFilter, typeFilter: source.typeFilter } : {}),
+    ...(mode === 'targeted' ? { weakCategories: source.weakCategories || [] } : {}),
+    ...(mode === 'wrong' ? { mistakeSourceMode: source.mode === 'wrong' ? source.mistakeSourceMode || 'all' : source.mode, memoryQueue: 'all' } : {}),
+    timerCounters: {}, markedQuestionIds: rows.filter(row => row.marked).map(row => row.id),
+    questionIds: session.map(q => q.id), answers: [...answers], index: 0, status: 'active',
+    createdAt: now, updatedAt: now, dirty: true
+  };
+  state.sessions.unshift(currentSession); save();
+  if (navigator.onLine) window.TijianSync?.sync();
+  setView('practice');
+}
+
 function sessionRows(record) {
   const byId = new Map(bank().map(question => [question.id, question]));
   const marked = new Set(record.markedQuestionIds || record.questionIds.filter(id => state.marked[id]));
@@ -130,7 +170,7 @@ function resultView(record = currentSession) {
         ${reviewEntry(record, '整卷回顾', 'paper')}
       </div>
     </section>
-    ${memorySummaryHtml(record)}<div class="result-actions">${primary}<button class="result-action-outline" data-go="history">历史答题</button><button class="result-action-outline" data-go="mistakes">打开错题本</button></div>
+    ${retryActionsHtml(record)}${memorySummaryHtml(record)}<div class="result-actions">${primary}<button class="result-action-outline" data-go="history">历史答题</button><button class="result-action-outline" data-go="mistakes">打开错题本</button></div>
     <div class="result-foot">TIJIAN / STUDY SYSTEM <span>${esc(sessionDate(record.finishedAt || record.updatedAt))}</span></div>
   </div>`;
 }
@@ -193,7 +233,7 @@ function reviewCard(row, record, whole) {
     <div class="question-meta"><span>${esc(row.question?.type || '题目缺失')}</span><span>${esc(row.question?.category || '未分类')}</span></div>
     ${record.timerCounters ? `<p class="muted">本题累计用时 ${formatStudyTime(studyTimeMs(record,row.index))}</p>` : ''}
     <h2>${esc(row.question?.question || '题目已不在当前题库')}</h2>${questionAttemptsHtml(row.id)}${reviewQuestionHtml(row, record)}
-    ${whole ? `<button class="secondary" data-review-question="${row.index}">单独回顾这道题 →</button>` : ''}
+    <div class="history-retry-actions">${whole ? `<button class="secondary" data-review-question="${row.index}">单独回顾这道题 →</button>` : ''}${row.question ? retryQuestionButton(record, row.index) : ''}</div>
   </article>`;
 }
 
@@ -247,7 +287,7 @@ function reviewView() {
       <button class="secondary" data-result-session="${esc(record.id)}">查看${record.status === 'finished' ? '结算' : '总结'}</button></div>
     <div class="hero"><div><div class="eyebrow">REVIEW / ${whole ? 'FULL PAPER' : 'QUESTION'}</div><h1>${whole ? '整卷回顾' : '逐题回顾'}</h1>
       <p>${esc(sessionTitle(record.mode))} · ${whole ? '按本轮题序展开选项和解析，每页 10 道。' : '回看自己的答案、正确答案和逐项解析。'}</p></div></div>
-    ${controls}${content}</div>`;
+    ${controls}${retryActionsHtml(record)}${content}</div>`;
 }
 
 function changeReview(update) {
@@ -262,6 +302,8 @@ function backFromReview() {
 }
 
 function bindSessionReview() {
+  document.querySelectorAll('[data-retry-session]').forEach(button => button.onclick = () => retrySession(button.dataset.retrySession, button.dataset.retryKind,
+    button.dataset.retryIndex === undefined ? null : Number(button.dataset.retryIndex)));
   document.querySelectorAll('[data-review-session]').forEach(button => button.onclick = () => {
     const target = button.dataset;
     openReview(target.reviewSession, target.reviewLayout, target.reviewFilter,
