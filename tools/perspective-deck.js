@@ -2,10 +2,11 @@
 const clamp = (value, min = 0, max = 1) => Math.min(max, Math.max(min, value));
 const smooth = value => { const t = clamp(value); return t * t * (3 - 2 * t); };
 const mix = (a, b, t) => a + (b - a) * t;
-const defaults = Object.freeze({ gap: 22, scaleStep: .08, duration: 700, elasticity: .55, aspectRatio: 2, clearance: 14, extraction: .38, animate: true });
+const defaults = Object.freeze({ gap: 22, scaleStep: .08, duration: 700, elasticity: .55, aspectRatio: 2, clearance: 14, extraction: .38, animate: true, cardHeight: null, compact: false });
 function optionsOf(input) {
   const out = { ...defaults, ...input };
   if (typeof out.animate !== 'boolean') throw new TypeError('animate must be a boolean.');
+  if (typeof out.compact !== 'boolean' || out.cardHeight !== null && (!Number.isFinite(out.cardHeight) || out.cardHeight < 200 || out.cardHeight > 600)) throw new TypeError('Invalid card layout.');
   const limits = { gap: [8, 42], scaleStep: [.03, .15], duration: [240, 2400], elasticity: [0, 1], aspectRatio: [1.6, 3], clearance: [8, 40], extraction: [.3, .48] };
   for (const [key, [min, max]] of Object.entries(limits)) {
     if (!Number.isFinite(out[key]) || out[key] < min || out[key] > max) throw new RangeError(`Invalid deck option: ${key}`);
@@ -91,15 +92,15 @@ export class PerspectiveCardDeck extends EventTarget {
 
   _emit(reason) { this.root.dataset.state = this.active ? this.active.paused ? 'paused' : 'running' : 'idle'; this.dispatchEvent(new CustomEvent('change', { detail: { reason, ...this.snapshot() } })); }
   _measure() {
-    this.width = this.root.clientWidth; this.height = this.width / this.options.aspectRatio;
+    this.width = this.root.clientWidth; this.height = this.options.cardHeight ?? this.width / this.options.aspectRatio;
     this.plane.style.height = `${this.height}px`; this.plane.style.top = `${3 * this.options.gap + 18}px`;
     const backScale = 1 - 3 * this.options.scaleStep;
-    this.root.style.height = `${3 * this.options.gap + 18 + this.height * (1 + backScale) + this.options.clearance + 24}px`;
+    this.root.style.height = `${3 * this.options.gap + 18 + this.height * (this.options.compact ? 1 : 1 + backScale) + this.options.clearance + 24}px`;
   }
   _resize() {
     if (this.dead) return;
-    const nextHeight = this.root.clientWidth / this.options.aspectRatio;
-    if (Math.abs(nextHeight - this.height) < .1) return;
+    const nextHeight = this.options.cardHeight ?? this.root.clientWidth / this.options.aspectRatio;
+    if (Math.abs(nextHeight - this.height) < .1 && Math.abs(this.root.clientWidth - this.width) < .1) return;
     const active = this.active, time = active?.animations[0].currentTime || 0;
     this._measure();
     if (active) {
@@ -152,6 +153,8 @@ export class PerspectiveCardDeck extends EventTarget {
     if (targetId && selectedDepth === 0) { request.resolve({ status: 'unchanged', order: [...this.order] }); this._emit('unchanged'); return; }
     const active = { from, request, direction, targetId, selectedDepth, paused, rate: 1, animations: [], dragging: false, rollback: false };
     this.active = active;
+    // Card faces contain live controls. Freeze input until the new front has landed.
+    for (const element of this.elements.values()) element.inert = true;
     if (this.reducedMotion.matches || !this.options.animate) { this._commit(active); return; }
     active.animations = this._animations(active.from, 0, paused, 1, direction, selectedDepth); this._watch(active); this._emit('start');
   }

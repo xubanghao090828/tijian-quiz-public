@@ -106,8 +106,11 @@
   function updatePanel() {
     const parent = document.querySelector('[data-tools-highlight-host]') || document.querySelector('.practice-tools-store');
     if (!parent) return;
+    const scrollTop = parent.scrollTop;
+    if (parent.matches('[data-tools-highlight-host]')) panelOpen = true;
     parent.querySelector('.keyword-settings')?.remove();
     parent.insertAdjacentHTML('beforeend', panelHtml());
+    parent.scrollTop = scrollTop;
     const panel = parent.querySelector('.keyword-settings');
     panel.addEventListener('toggle', () => { if (panel.isConnected) panelOpen = panel.open; });
     const on = (selector, handler) => panel.querySelector(selector)?.addEventListener('click', handler);

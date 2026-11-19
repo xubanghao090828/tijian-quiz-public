@@ -3,8 +3,18 @@
 数控题库刷题网页与荣耀 Android 应用。内置 1,460 道题及解析，可离线刷题，无需登录。
 
 - [打开网页](https://xubanghao090828.github.io/tijian-quiz-public/)
-- [下载 Android 1.26.0 APK](https://github.com/xubanghao090828/tijian-quiz-public/releases/download/v1.26.0/Tijian-Honor-offline-v1.26.0.apk)
+- [下载 Android 1.27.0 APK](https://github.com/xubanghao090828/tijian-quiz-public/releases/download/v1.27.0/Tijian-Honor-offline-v1.27.0.apk)
 - [版本发布页](https://github.com/xubanghao090828/tijian-quiz-public/releases)
+
+## 1.27.0 卡面直接操作
+
+题号导航、本题记录、题干高亮和本轮概况以四张卡片直接呈现在选项下方，不再使用工具抽屉或卡堆下面的独立内容面板。前面的卡片就是实际操作界面：可直接选题、翻组、查看全部作答记录、改颜色与保存模式、查看用时和阶段总结。
+
+上下滑动卡片标题切换，点击后层露出的标题可直接选中。卡内内容保持原生纵向滚动，表单和按钮不触发翻卡；切题栏中间恢复「题号」，用于定位题号卡。保留印品鸿蒙体和现有绳网风格配色。
+
+沿用原生 WAAPI 的下方抽出、上弹到前方轨迹，上一张使用独立正向时间动画。固定卡面尺寸和绘制边界避免动画扩张页面高度；快速点选、窗口变化、同题刷新均保留稳定顺序。所有卡片模块随 APK 和网页缓存离线内置。学习数据结构与同步协议未变，覆盖安装保留原有本地记录。
+
+验证：卡内实点与原生触摸、70 次单题记录、任意题号跳转、真实离线重开、320px 与桌面布局、4 倍 CPU 降速及原切题动画回归通过。未连接荣耀真机，不能把桌面检查等同于手机 GPU 性能保证。
 
 ## 1.26.0 绳网风格练习工具抽屉
 

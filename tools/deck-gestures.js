@@ -1,10 +1,10 @@
-import { springAt } from './perspective-deck.js?v=tools126';
+import { springAt } from './perspective-deck.js?v=cards127';
 const clamp=(value,min,max)=>Math.min(max,Math.max(min,value));
 
 /** Independent input adapter: Pointer Events -> deck timeline. No framework. */
 export class DeckGestures extends EventTarget {
-  constructor(deck) {
-    super(); this.deck=deck;this.root=deck.root;this.stroke=null;this.frame=0;this.offset=0;this.offsetAnimation=null;this.dead=false;
+  constructor(deck, { handle = null } = {}) {
+    super(); this.deck=deck;this.root=deck.root;this.handle=handle;this.stroke=null;this.frame=0;this.offset=0;this.offsetAnimation=null;this.dead=false;
     this.abort=new AbortController();const signal=this.abort.signal;
     this.root.classList.add('pcd-gestures');this.root.tabIndex=0;this.root.setAttribute('aria-keyshortcuts','ArrowUp ArrowDown');
     this.root.addEventListener('pointerdown',event=>this.down(event),{signal});
@@ -16,6 +16,7 @@ export class DeckGestures extends EventTarget {
     window.addEventListener('blur',()=>this.cancel(),{signal});
     document.addEventListener('visibilitychange',()=>{if(document.hidden)this.cancel()},{signal});
     this.root.addEventListener('keydown',event=>{
+      if(this.handle&&event.target!==this.root)return;
       if(event.target.closest('input,button,select,textarea,a')||!['ArrowUp','ArrowDown'].includes(event.key))return;
       event.preventDefault();this.dispatchEvent(new Event('intent'));this.deck.shuffle(event.key==='ArrowUp'?1:-1);
     },{signal});
@@ -23,6 +24,7 @@ export class DeckGestures extends EventTarget {
   }
   down(event){
     const pick=event.target.closest('.pcd-pick');
+    if(this.handle && !pick && !event.target.closest(this.handle))return;
     if(!event.isPrimary||event.button!==0||!pick&&!event.target.closest('.pcd-plane')||!pick&&event.target.closest('button,input,select,textarea,a'))return;
     this.suppressClickUntil=0;
     this.cancel();
