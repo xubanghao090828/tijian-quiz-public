@@ -1,5 +1,5 @@
-import { PerspectiveCardDeck } from './perspective-deck.js?v=swipe2';
-import { DeckGestures } from './deck-gestures.js?v=swipe2';
+import { PerspectiveCardDeck } from './perspective-deck.js?v=previous3';
+import { DeckGestures } from './deck-gestures.js?v=previous3';
 const cards = [
   {id:'A',title:'开始刷题',description:'专注眼前这一题。',category:'练习',footer:'PRACTICE',background:'#263b5a',icon:'<path d="m10 7 7 5-7 5z"/><rect x="3" y="3" width="18" height="18" rx="4"/>'},
   {id:'B',title:'错题复习',description:'把不熟悉的，再练一次。',category:'复习',footer:'REVIEW',background:'#3d384e',icon:'<path d="M4 8h11a5 5 0 0 1 0 10h-4M4 8l4-4M4 8l4 4"/>'},

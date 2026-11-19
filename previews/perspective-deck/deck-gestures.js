@@ -1,4 +1,4 @@
-import { springAt } from './perspective-deck.js?v=swipe2';
+import { springAt } from './perspective-deck.js?v=previous3';
 const clamp=(value,min,max)=>Math.min(max,Math.max(min,value));
 
 /** Independent input adapter: Pointer Events -> deck timeline. No framework. */
@@ -41,7 +41,8 @@ export class DeckGestures extends EventTarget {
   draw(){
     this.frame=0;const s=this.stroke;if(!s?.active)return;
     const dy=s.lastY-s.y,distance=dy*(s.direction>0?-1:1),span=Math.max(100,this.deck.height*.65);
-    s.preview=this.deck.drag(s.direction,clamp(distance/span,0,1)*.28);
+    // The full-size front card needs less timeline travel to stay under a downward finger.
+    s.preview=this.deck.drag(s.direction,clamp(distance/span,0,1)*(s.direction>0?.28:.20));
     this.offset=this.deck.reducedMotion.matches?0:s.baseOffset+clamp(dy*.18,-32,32);
     this.deck.plane.style.transform=`translate3d(0,${this.offset}px,0)`;
   }
