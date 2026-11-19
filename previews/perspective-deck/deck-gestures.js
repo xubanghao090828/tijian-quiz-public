@@ -1,4 +1,4 @@
-import { springAt } from './perspective-deck.js?v=previous3';
+import { springAt } from './perspective-deck.js?v=pick4';
 const clamp=(value,min,max)=>Math.min(max,Math.max(min,value));
 
 /** Independent input adapter: Pointer Events -> deck timeline. No framework. */
@@ -22,7 +22,9 @@ export class DeckGestures extends EventTarget {
     this.root.addEventListener('click',event=>{if(performance.now()<(this.suppressClickUntil||0)){event.preventDefault();event.stopImmediatePropagation()}},{signal,capture:true});
   }
   down(event){
-    if(!event.isPrimary||event.button!==0||!event.target.closest('.pcd-plane')||event.target.closest('button,input,select,textarea,a'))return;
+    const pick=event.target.closest('.pcd-pick');
+    if(!event.isPrimary||event.button!==0||!pick&&!event.target.closest('.pcd-plane')||!pick&&event.target.closest('button,input,select,textarea,a'))return;
+    this.suppressClickUntil=0;
     this.cancel();
     if(this.offsetAnimation){this.offset=new DOMMatrixReadOnly(getComputedStyle(this.deck.plane).transform).m42;this.offsetAnimation.cancel();this.offsetAnimation=null;this.deck.plane.style.transform=`translate3d(0,${this.offset}px,0)`;}
     this.stroke={id:event.pointerId,x:event.clientX,y:event.clientY,lastY:event.clientY,points:[{y:event.clientY,t:event.timeStamp}],direction:0,active:false,preview:false,baseOffset:this.offset};
@@ -31,7 +33,7 @@ export class DeckGestures extends EventTarget {
     const s=this.stroke;if(!s||s.id!==event.pointerId)return;
     const dx=event.clientX-s.x,dy=event.clientY-s.y;
     if(!s.active){
-      if(Math.abs(dx)>10&&Math.abs(dx)>Math.abs(dy)*1.15){this.stroke=null;return;}
+      if(Math.abs(dx)>10&&Math.abs(dx)>Math.abs(dy)*1.15){this.stroke=null;this.suppressClickUntil=performance.now()+400;return;}
       if(Math.abs(dy)<8||Math.abs(dy)<Math.abs(dx)*1.15)return;
       s.active=true;s.direction=dy<0?1:-1;this.root.setPointerCapture(event.pointerId);this.root.classList.add('is-dragging');this.dispatchEvent(new Event('intent'));
     }

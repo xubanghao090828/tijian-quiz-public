@@ -1,6 +1,6 @@
 {
   "engine": "Microsoft Edge / Chromium, native WAAPI",
-  "date": "2026-11-19T05:21:26.871Z",
+  "date": "2026-11-19T05:31:21.784Z",
   "checks": [
     "Exact initial scales, centered flat cards, no rotation or fade",
     "Bottom-only extraction before scaling/promotion, fully disjoint z swap, upward return, slight spring overshoot, four stable end poses",
@@ -871,34 +871,34 @@
     "maxMs": 2.900000000001455,
     "over25ms": 0,
     "longTasks": [],
-    "ScriptDuration": 0.01411,
-    "LayoutDuration": 0.001617,
-    "RecalcStyleDuration": 0.04039,
-    "TaskDuration": 0.17502099999999998,
+    "ScriptDuration": 0.014064,
+    "LayoutDuration": 0.001733,
+    "RecalcStyleDuration": 0.041304,
+    "TaskDuration": 0.17434,
     "LayoutCount": 19,
     "cpuThrottling": 1
   },
   "performance4x": {
-    "samples": 1503,
+    "samples": 1497,
     "medianMs": 2.7999999999992724,
     "p95Ms": 2.900000000001455,
-    "maxMs": 8.400000000001455,
+    "maxMs": 11.100000000002183,
     "over25ms": 0,
     "longTasks": [],
-    "ScriptDuration": 0.025367,
-    "LayoutDuration": 0.007348,
-    "RecalcStyleDuration": 0.26518400000000003,
-    "TaskDuration": 0.753635,
+    "ScriptDuration": 0.031687,
+    "LayoutDuration": 0.007648,
+    "RecalcStyleDuration": 0.267388,
+    "TaskDuration": 0.800065,
     "LayoutCount": 19,
     "cpuThrottling": 4
   },
   "trace": {
     "Layout": 7,
-    "Paint": 22,
+    "Paint": 25,
     "CompositeLayers": 0,
-    "DrawFrame": 500,
+    "DrawFrame": 505,
     "UpdateLayerTree": 0,
-    "AnimationFrame": 2002
+    "AnimationFrame": 2026
   },
   "recording": "actual-motion.webm",
   "limit": "Headless desktop Chromium measurements; not measured on physical Honor WIN RT. RAF cadence is not a hardware GPU presentation guarantee."

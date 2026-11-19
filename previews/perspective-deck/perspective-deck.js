@@ -21,14 +21,15 @@ export function springAt(time, elasticity = defaults.elasticity) {
 }
 
 /** Pure geometry: identity/order/content are intentionally outside this function. */
-export function poseAt(depth, progress, height, input = {}) {
+export function poseAt(depth, progress, height, input = {}, selectedDepth = 3) {
   const o = { ...defaults, ...input }, p = clamp(progress), scale = 1 - depth * o.scaleStep;
-  if (depth === 3) {
+  if (depth === selectedDepth) {
     const below = height + o.clearance;
-    if (p < o.extraction) return { y: mix(-3 * o.gap, below, smooth(p / o.extraction)), scale, z: 1 };
+    if (p < o.extraction) return { y: mix(-selectedDepth * o.gap, below, smooth(p / o.extraction)), scale, z: 4 - selectedDepth };
     const rise = springAt((p - o.extraction) / (1 - o.extraction), o.elasticity);
     return { y: mix(below, 0, rise), scale: mix(scale, 1, rise), z: 5 };
   }
+  if (depth > selectedDepth) return { y: -depth * o.gap, scale, z: 4 - depth };
   const retreat = smooth(p / .85);
   const bumpPhase = (p - .65) / .24;
   const bump = bumpPhase > 0 && bumpPhase < 1 ? Math.sin(Math.PI * bumpPhase) ** 2 * height * .008 : 0;
@@ -59,7 +60,7 @@ export class PerspectiveCardDeck extends EventTarget {
     if (!(root instanceof HTMLElement) || !Array.isArray(cards) || cards.length !== 4 || typeof renderCard !== 'function') throw new TypeError('Provide a root, four cards and renderCard(card).');
     if (new Set(cards.map(card => card.id)).size !== 4 || cards.some(card => typeof card.id !== 'string' || !card.id)) throw new TypeError('Card ids must be unique strings.');
     this.root = root; this.options = optionsOf(input); this.content = new Map(cards.map(card => [card.id, card]));
-    this.order = cards.map(card => card.id); this.initialOrder = [...this.order]; this.elements = new Map();
+    this.order = cards.map(card => card.id); this.initialOrder = [...this.order]; this.elements = new Map(); this.pickers = new Map();
     this.active = null; this.queued = null; this.pendingOptions = null; this.dead = false; this.cycles = 0;
     this.reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
     root.classList.add('pcd-root'); root.setAttribute('role', 'group'); root.setAttribute('aria-label', '四层卡片堆');
@@ -71,6 +72,12 @@ export class PerspectiveCardDeck extends EventTarget {
       element.append(content); this.elements.set(card.id, element); this.plane.append(element);
     }
     root.append(this.plane);
+    for (const card of cards) {
+      const pick = document.createElement('button'); pick.type = 'button'; pick.className = 'pcd-pick'; pick.dataset.cardId = card.id;
+      pick.setAttribute('aria-label', `直接选择${card.title || card.label || card.id}`);
+      pick.addEventListener('click', () => { this.dispatchEvent(new CustomEvent('pick', { detail: { id: card.id } })); this.select(card.id); });
+      this.pickers.set(card.id, pick); root.append(pick);
+    }
     this.visibility = () => {
       if (document.hidden && this.active && !this.active.paused) { this.autoPaused = true; this.pause(); }
       else if (!document.hidden && this.autoPaused) { this.autoPaused = false; this.resume(); }
@@ -83,7 +90,7 @@ export class PerspectiveCardDeck extends EventTarget {
 
   _emit(reason) { this.root.dataset.state = this.active ? this.active.paused ? 'paused' : 'running' : 'idle'; this.dispatchEvent(new CustomEvent('change', { detail: { reason, ...this.snapshot() } })); }
   _measure() {
-    this.height = this.root.clientWidth / this.options.aspectRatio;
+    this.width = this.root.clientWidth; this.height = this.width / this.options.aspectRatio;
     this.plane.style.height = `${this.height}px`; this.plane.style.top = `${3 * this.options.gap + 18}px`;
     const backScale = 1 - 3 * this.options.scaleStep;
     this.root.style.height = `${3 * this.options.gap + 18 + this.height * (1 + backScale) + this.options.clearance + 24}px`;
@@ -96,7 +103,7 @@ export class PerspectiveCardDeck extends EventTarget {
     this._measure();
     if (active) {
       const old = active.animations;
-      active.animations = this._animations(active.from, time, active.paused, active.rate, active.direction);
+      active.animations = this._animations(active.from, time, active.paused, active.rate, active.direction, active.selectedDepth);
       old.forEach(animation => animation.cancel()); this._watch(active);
     } else this._rest();
     this._emit('resize');
@@ -108,20 +115,22 @@ export class PerspectiveCardDeck extends EventTarget {
       element.style.zIndex = String(4 - depth); element.style.willChange = '';
       element.dataset.depth = depth; element.inert = depth !== 0;
       element.setAttribute('aria-hidden', String(depth !== 0));
+      const pick = this.pickers.get(id), width = this.width * (1 - depth * this.options.scaleStep);
+      Object.assign(pick.style, { display: depth ? 'block' : 'none', width: `${width}px`, height: `${this.options.gap}px`, left: `${(this.width - width) / 2}px`, top: `${3 * this.options.gap + 18 - depth * this.options.gap}px` });
     });
     this.root.dataset.front = this.order[0];
   }
-  _animations(from, time = 0, paused = false, rate = 1, direction = 1) {
+  _animations(from, time = 0, paused = false, rate = 1, direction = 1, selectedDepth = 3) {
     const o = this.options, samples = [...new Set([...Array.from({ length: 121 }, (_, i) => i / 120), o.extraction])].sort((a, b) => a - b);
     const animations = from.map((id, depth) => {
       const element = this.elements.get(id); element.style.willChange = 'transform'; element.style.zIndex = String(4 - depth);
       const pose = direction > 0 ? poseAt : previousPoseAt;
-      const keyframes = samples.map(p => ({ offset: p, transform: transform(pose(depth, p, this.height, o)) }));
+      const keyframes = samples.map(p => ({ offset: p, transform: transform(pose(depth, p, this.height, o, selectedDepth)) }));
       return element.animate(keyframes, { duration: o.duration, fill: 'both', easing: 'linear' });
     });
     // One discrete z change on the SAME native timeline as the transforms.
     // Both directions cross only when the moving card is fully below the stack.
-    const flyer = direction > 0 ? 3 : 0, beforeZ = direction > 0 ? '1' : '4', afterZ = direction > 0 ? '5' : '0';
+    const flyer = direction > 0 ? selectedDepth : 0, beforeZ = direction > 0 ? String(4 - selectedDepth) : '4', afterZ = direction > 0 ? '5' : '0';
     animations.push(this.elements.get(from[flyer]).animate([
       { offset: 0, zIndex: beforeZ, easing: 'steps(1,end)' },
       { offset: o.extraction, zIndex: afterZ }, { offset: 1, zIndex: afterZ }
@@ -136,33 +145,45 @@ export class PerspectiveCardDeck extends EventTarget {
       if (this.active === active && active.animations === generation) this._commit(active);
     }).catch(() => {}); // Canceled generation is replaced on resize or disposal.
   }
-  _begin(request, paused = false, direction = 1) {
+  _begin(request, paused = false, direction = 1, targetId = null) {
     const from = [...this.order];
-    const active = { from, request, direction, paused, rate: 1, animations: [], dragging: false, rollback: false };
+    const selectedDepth = targetId ? from.indexOf(targetId) : 3;
+    if (targetId && selectedDepth === 0) { request.resolve({ status: 'unchanged', order: [...this.order] }); this._emit('unchanged'); return; }
+    const active = { from, request, direction, targetId, selectedDepth, paused, rate: 1, animations: [], dragging: false, rollback: false };
     this.active = active;
     if (this.reducedMotion.matches) { this._commit(active); return; }
-    active.animations = this._animations(active.from, 0, paused, 1, direction); this._watch(active); this._emit('start');
+    active.animations = this._animations(active.from, 0, paused, 1, direction, selectedDepth); this._watch(active); this._emit('start');
   }
   _commit(active) {
     if (this.active !== active || this.dead) return;
-    if (!active.rollback) { this.order = active.direction > 0 ? [active.from[3], ...active.from.slice(0, 3)] : [...active.from.slice(1), active.from[0]]; this.cycles++; }
+    if (!active.rollback) { this.order = active.direction > 0 ? [active.from[active.selectedDepth], ...active.from.filter((_, depth) => depth !== active.selectedDepth)] : [...active.from.slice(1), active.from[0]]; this.cycles++; }
     this.active = null;
     // Write stable poses before removing native fill effects; node identities never move.
     this._rest(); active.animations.forEach(animation => animation.cancel());
     if (this.pendingOptions) { this.options = this.pendingOptions; this.pendingOptions = null; this._measure(); this._rest(); }
     active.request.resolve({ status: active.rollback ? 'canceled' : 'completed', order: [...this.order] });
     const queued = this.queued; this.queued = null;
-    if (queued) this._begin(queued, false, queued.direction);
+    if (queued) this._begin(queued, false, queued.direction, queued.targetId);
     this._emit(active.rollback ? 'rollback-complete' : 'complete');
   }
   shuffle(direction = 1) {
     if (direction !== 1 && direction !== -1) throw new RangeError('Shuffle direction must be 1 or -1.');
     if (this.dead) return Promise.resolve({ status: 'destroyed' });
-    if (this.active) { if (!this.queued) this.queued = deferred(); this.queued.direction = direction; this._emit('queued'); return this.queued.promise; }
+    if (this.active) { if (!this.queued) this.queued = deferred(); this.queued.direction = direction; this.queued.targetId = null; this._emit('queued'); return this.queued.promise; }
     const request = deferred(); this._begin(request, false, direction); return request.promise;
   }
   next() { return this.shuffle(1); }
   previous() { return this.shuffle(-1); }
+  select(id) {
+    if (!this.content.has(id)) throw new RangeError('Unknown card id.');
+    if (this.dead) return Promise.resolve({ status: 'destroyed' });
+    if (!this.active && this.order[0] === id) return Promise.resolve({ status: 'unchanged', order: [...this.order] });
+    if (this.active) {
+      if (!this.queued) this.queued = deferred();
+      Object.assign(this.queued, { direction: 1, targetId: id }); this._emit('queued'); return this.queued.promise;
+    }
+    const request = deferred(); this._begin(request, false, 1, id); return request.promise;
+  }
   /** A gesture scrubs only the pre-crossover portion, so cancellation never pops a layer. */
   drag(direction, amount) {
     if (this.dead || this.reducedMotion.matches || this.active && !this.active.dragging) return false;
@@ -214,12 +235,12 @@ export class PerspectiveCardDeck extends EventTarget {
   snapshot() {
     const time = this.active ? clamp((this.active.animations[0]?.currentTime || 0) / this.options.duration) : 0;
     const progress = this.active ? time : 0;
-    return { order: [...this.order], nextOrder: [this.order[3], ...this.order.slice(0, 3)], previousOrder: [...this.order.slice(1), this.order[0]], progress, cycles: this.cycles, queued: !!this.queued, running: !!this.active, paused: !!this.active?.paused, dragging: !!this.active?.dragging, direction: this.active?.direction || 1, options: { ...(this.pendingOptions || this.options) }, height: this.height, reducedMotion: this.reducedMotion.matches };
+    return { order: [...this.order], nextOrder: [this.order[3], ...this.order.slice(0, 3)], previousOrder: [...this.order.slice(1), this.order[0]], targetId: this.active?.targetId || null, progress, cycles: this.cycles, queued: !!this.queued, running: !!this.active, paused: !!this.active?.paused, dragging: !!this.active?.dragging, direction: this.active?.direction || 1, options: { ...(this.pendingOptions || this.options) }, height: this.height, reducedMotion: this.reducedMotion.matches };
   }
   destroy() {
     if (this.dead) return; this.dead = true; this.queued?.resolve({ status: 'destroyed' });
     const active = this.active; this.active = null; active?.animations.forEach(animation => animation.cancel()); active?.request.resolve({ status: 'destroyed' });
     this.resizeObserver.disconnect(); document.removeEventListener('visibilitychange', this.visibility); this.reducedMotion.removeEventListener('change', this.reducedChange);
-    this.plane.remove(); this.root.style.height = ''; this.elements.clear();
+    this.plane.remove(); for (const pick of this.pickers.values()) pick.remove(); this.pickers.clear(); this.root.style.height = ''; this.elements.clear();
   }
 }
