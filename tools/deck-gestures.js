@@ -1,4 +1,4 @@
-import { springAt } from './perspective-deck.js?v=cards127';
+import { springAt } from './perspective-deck.js?v=cards1271';
 const clamp=(value,min,max)=>Math.min(max,Math.max(min,value));
 
 /** Independent input adapter: Pointer Events -> deck timeline. No framework. */
@@ -23,6 +23,8 @@ export class DeckGestures extends EventTarget {
     this.root.addEventListener('click',event=>{if(performance.now()<(this.suppressClickUntil||0)){event.preventDefault();event.stopImmediatePropagation()}},{signal,capture:true});
   }
   down(event){
+    // A fresh primary press is intentional input, not the click synthesized by a swipe.
+    if(event.isPrimary&&event.button===0)this.suppressClickUntil=0;
     const pick=event.target.closest('.pcd-pick');
     if(this.handle && !pick && !event.target.closest(this.handle))return;
     if(!event.isPrimary||event.button!==0||!pick&&!event.target.closest('.pcd-plane')||!pick&&event.target.closest('button,input,select,textarea,a'))return;

@@ -1,6 +1,6 @@
 (function(){
   'use strict';
-  const modules=Promise.all([import('./tools/perspective-deck.js?v=cards127'),import('./tools/deck-gestures.js?v=cards127')]);
+  const modules=Promise.all([import('./tools/perspective-deck.js?v=cards1271'),import('./tools/deck-gestures.js?v=cards1271')]);
   modules.catch(()=>{});
   let surface=null,deck=null,gestures=null,questionKey=null,lastCard='nav',page=0,loadingKey=null,observer=null,scrollPositions=null,focusedControl=null;
   const parking=document.createDocumentFragment(),size=24;
@@ -45,7 +45,8 @@
   async function mount(){
     const slot=document.querySelector('[data-practice-cards]'),requestedKey=key();if(!slot||!requestedKey)return;
     if(surface&&questionKey===requestedKey){
-      slot.append(surface);focusedControl?.focus({preventScroll:true});focusedControl=null;
+      if(surface.parentNode!==slot)slot.append(surface);
+      focusedControl?.focus({preventScroll:true});focusedControl=null;
       refresh();for(const [node,top] of scrollPositions||[])node.scrollTop=top;scrollPositions=null;return;
     }
     if(loadingKey===requestedKey)return;loadingKey=requestedKey;
@@ -72,7 +73,10 @@
     window.TijianHighlighter?.mountSettings();refresh();
   }
   async function open(id='nav'){
-    if(!ids.includes(id)||!key())return;await mount();if(!deck)return;
+    if(!ids.includes(id)||!key())return;
+    // Selecting a live card must not rebuild its controls or detach its scroller.
+    if(!deck||questionKey!==key()||!surface?.isConnected)await mount();
+    if(!deck)return;
     surface.scrollIntoView({block:'start',behavior:motionEnabled&&!matchMedia('(prefers-reduced-motion: reduce)').matches?'smooth':'auto'});
     await deck.select(id);
   }
