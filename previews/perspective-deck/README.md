@@ -2,7 +2,23 @@
 
 独立的四卡堆动画原型。原生 HTML、CSS、ES modules、Web Animations API；没有构建步骤、第三方运行依赖、远程资源或学习记录读写。正式刷题页面与 APK 未改动。
 
-运行：在本目录执行 `python -m http.server 4180 --bind 127.0.0.1`，打开 `http://127.0.0.1:4180/`。`?autoplay=0` 关闭默认循环。浏览器须支持 WAAPI 和 ResizeObserver；当前项目使用的 Android System WebView / Chromium 支持这些能力。
+## 上下滑动（第二版）
+
+卡片上**上滑下一张、下滑上一张**，默认关闭自动演示，进入后可直接操作。拖动先锁定纵向意图，卡堆跟随手指给出轻微弹性位移，原生时间线预览最多到交层点之前；松手结合距离与最近 80 ms 的速度决定完成或撤销。下滑使用同一轨迹的反向播放，回到真正的上一张，保持四层顺序可逆。
+
+参考 [Motion 拖拽方向锁定与取消](https://motion.dev/docs/react-use-drag-controls) 和 [use-gesture 距离、速度阈值及 rubberband](https://use-gesture.netlify.app/docs/options/) 的原理；没有引入 React 或手势依赖。实现采用 Pointer Events 与原生动画控制，手势识别独立于动画和内容。
+
+- 8 px 意图阈值；水平意图忽略，未达切换阈值回弹。快速轻甩可使用速度触发。
+- 同一次手势方向锁定，拖回起点会撤销；指针取消、第二根手指、窗口失焦安全回弹。
+- 只有卡片区域保留纵向触摸，卡片外页面正常滚动；不再通过轻点卡片切换，避免拖动后的合成 click 重复执行。
+- 当前动画运行时的新手势最多排队一次，待办采用最新方向；键盘上/下键与上一张/下一张按钮等价。
+- [真实触摸录像](playback.html) 含触点指示；`?touch=1` 可显示演示触点。
+- 新增 `deck-gestures.js`，用 `new DeckGestures(deck)` 接入，卸载时先调用 `gestures.destroy()`，再调用 `deck.destroy()`。
+- 新增 `deck.next()`、`deck.previous()`、`deck.shuffle(-1)`；旧的 `shuffle()` 仍然向下一张切换。
+
+`gesture-verification.json` 记录真实触摸、反向循环、速度触发、撤销、多指取消和区域外滚动的验证。主动画的性能与原循环回归仍见 `verification.json`。
+
+运行：在本目录执行 `python -m http.server 4180 --bind 127.0.0.1`，打开 `http://127.0.0.1:4180/`。默认可手势操作，`?autoplay=1` 开启自动演示。浏览器须支持 WAAPI 和 ResizeObserver；当前项目使用的 Android System WebView / Chromium 支持这些能力。
 
 ## 调研与选择（2026-11-19）
 

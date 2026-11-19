@@ -99,7 +99,7 @@ export class PerspectiveCardDeck extends EventTarget {
   _animations(from, time = 0, paused = false, rate = 1) {
     const o = this.options, samples = [...new Set([...Array.from({ length: 121 }, (_, i) => i / 120), o.extraction])].sort((a, b) => a - b);
     const animations = from.map((id, depth) => {
-      const element = this.elements.get(id); element.style.willChange = 'transform';
+      const element = this.elements.get(id); element.style.willChange = 'transform'; element.style.zIndex = String(4 - depth);
       const keyframes = samples.map(p => ({ offset: p, transform: transform(poseAt(depth, p, this.height, o)) }));
       return element.animate(keyframes, { duration: o.duration, fill: 'both', easing: 'linear' });
     });
@@ -119,27 +119,51 @@ export class PerspectiveCardDeck extends EventTarget {
       if (this.active === active && active.animations === generation) this._commit(active);
     }).catch(() => {}); // Canceled generation is replaced on resize or disposal.
   }
-  _begin(request, paused = false) {
-    const active = { from: [...this.order], request, paused, rate: 1, animations: [] };
+  _begin(request, paused = false, direction = 1) {
+    const from = direction > 0 ? [...this.order] : [...this.order.slice(1), this.order[0]];
+    const active = { from, request, direction, paused, rate: direction, animations: [], dragging: false, rollback: false };
     this.active = active;
     if (this.reducedMotion.matches) { this._commit(active); return; }
-    active.animations = this._animations(active.from, 0, paused); this._watch(active); this._emit('start');
+    active.animations = this._animations(active.from, direction > 0 ? 0 : this.options.duration, paused, direction); this._watch(active); this._emit('start');
   }
   _commit(active) {
     if (this.active !== active || this.dead) return;
-    this.order = [active.from[3], ...active.from.slice(0, 3)]; this.cycles++; this.active = null;
+    if (!active.rollback) { this.order = active.direction > 0 ? [active.from[3], ...active.from.slice(0, 3)] : [...active.from]; this.cycles++; }
+    this.active = null;
     // Write stable poses before removing native fill effects; node identities never move.
     this._rest(); active.animations.forEach(animation => animation.cancel());
     if (this.pendingOptions) { this.options = this.pendingOptions; this.pendingOptions = null; this._measure(); this._rest(); }
-    active.request.resolve({ status: 'completed', order: [...this.order] });
+    active.request.resolve({ status: active.rollback ? 'canceled' : 'completed', order: [...this.order] });
     const queued = this.queued; this.queued = null;
-    if (queued) this._begin(queued);
-    this._emit('complete');
+    if (queued) this._begin(queued, false, queued.direction);
+    this._emit(active.rollback ? 'rollback-complete' : 'complete');
   }
-  shuffle() {
+  shuffle(direction = 1) {
+    if (direction !== 1 && direction !== -1) throw new RangeError('Shuffle direction must be 1 or -1.');
     if (this.dead) return Promise.resolve({ status: 'destroyed' });
-    if (this.active) { if (!this.queued) { this.queued = deferred(); this._emit('queued'); } return this.queued.promise; }
-    const request = deferred(); this._begin(request); return request.promise;
+    if (this.active) { if (!this.queued) this.queued = deferred(); this.queued.direction = direction; this._emit('queued'); return this.queued.promise; }
+    const request = deferred(); this._begin(request, false, direction); return request.promise;
+  }
+  next() { return this.shuffle(1); }
+  previous() { return this.shuffle(-1); }
+  /** A gesture scrubs only the pre-crossover portion, so cancellation never pops a layer. */
+  drag(direction, amount) {
+    if (this.dead || this.reducedMotion.matches || this.active && !this.active.dragging) return false;
+    if (!this.active) { this._begin(deferred(), true, direction); this.active.dragging = true; }
+    if (this.active.direction !== direction) return false;
+    const p = clamp(amount, 0, .28), time = (direction > 0 ? p : 1 - p) * this.options.duration;
+    this.active.animations.forEach(animation => { animation.currentTime = Math.min(this.options.duration - .001, Math.max(.001, time)); });
+    this._emit('drag'); return true;
+  }
+  releaseDrag(commit, velocity = 0) {
+    const active = this.active; if (!active?.dragging) return;
+    const progress = this.snapshot().progress;
+    active.dragging = false; active.rollback = !commit; active.paused = false;
+    if (!commit && progress < .001) { this._commit(active); return; }
+    active.rate = active.direction * (commit ? 1 + clamp(Math.abs(velocity), 0, 1.5) * .3 : -1.8);
+    const time = active.animations[0].currentTime || 0, start = document.timeline.currentTime - time / active.rate;
+    active.animations.forEach(animation => { animation.playbackRate = active.rate; animation.play(); animation.startTime = start; });
+    this._watch(active); this._emit(commit ? 'release' : 'rollback');
   }
   /** Cancel future requests, keeping the current extraction/landing intact. */
   cancelQueued() { this.queued?.resolve({ status: 'canceled' }); this.queued = null; this._emit('queue-cleared'); }
@@ -154,7 +178,7 @@ export class PerspectiveCardDeck extends EventTarget {
   seek(progress) {
     if (this.dead || this.reducedMotion.matches) return;
     this.cancelQueued(); if (!this.active) this._begin(deferred(), true); else this.pause();
-    const time = Math.min(clamp(progress) * this.options.duration, this.options.duration - .001);
+    const time = Math.min((this.active.direction > 0 ? clamp(progress) : 1 - clamp(progress)) * this.options.duration, this.options.duration - .001);
     this.active.animations.forEach(animation => { animation.currentTime = time; }); this._emit('seek');
   }
   configure(input) {
@@ -171,8 +195,9 @@ export class PerspectiveCardDeck extends EventTarget {
     this.order = [...this.initialOrder]; this.cycles = 0; this._rest(); this._emit('reset');
   }
   snapshot() {
-    const progress = this.active ? clamp((this.active.animations[0]?.currentTime || 0) / this.options.duration) : 0;
-    return { order: [...this.order], nextOrder: [this.order[3], ...this.order.slice(0, 3)], progress, cycles: this.cycles, queued: !!this.queued, running: !!this.active, paused: !!this.active?.paused, options: { ...(this.pendingOptions || this.options) }, height: this.height, reducedMotion: this.reducedMotion.matches };
+    const time = this.active ? clamp((this.active.animations[0]?.currentTime || 0) / this.options.duration) : 0;
+    const progress = this.active ? this.active.direction > 0 ? time : 1 - time : 0;
+    return { order: [...this.order], nextOrder: [this.order[3], ...this.order.slice(0, 3)], previousOrder: [...this.order.slice(1), this.order[0]], progress, cycles: this.cycles, queued: !!this.queued, running: !!this.active, paused: !!this.active?.paused, dragging: !!this.active?.dragging, direction: this.active?.direction || 1, options: { ...(this.pendingOptions || this.options) }, height: this.height, reducedMotion: this.reducedMotion.matches };
   }
   destroy() {
     if (this.dead) return; this.dead = true; this.queued?.resolve({ status: 'destroyed' });
