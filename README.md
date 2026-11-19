@@ -3,8 +3,14 @@
 数控题库刷题网页与荣耀 Android 应用。内置 1,460 道题及解析，可离线刷题，无需登录。
 
 - [打开网页](https://xubanghao090828.github.io/tijian-quiz-public/)
-- [下载 Android 1.27.1 APK](https://github.com/xubanghao090828/tijian-quiz-public/releases/download/v1.27.1/Tijian-Honor-offline-v1.27.1.apk)
+- [下载 Android 1.28.0 APK](https://github.com/xubanghao090828/tijian-quiz-public/releases/download/v1.28.0/Tijian-Honor-offline-v1.28.0.apk)
 - [版本发布页](https://github.com/xubanghao090828/tijian-quiz-public/releases)
+
+## 1.28.0 四评级结算
+
+完成一轮后，按原有分数展示 S、A、B 或 X。原有 S ≥ 90、A ≥ 80、B ≥ 70，70 分以下归 X。手机上方显示评级，下方并排显示成绩和奖励与复习。桌面三个区并排。阶段总结依然显示本轮进度。
+
+评级播放用户提供的录屏原片。可切换同色融合或场景延展，也可重播。离开结算会释放视频，滚出视野时暂停。减少动态效果或播放失败时使用静态画面。真实成绩、累计练习等级、错题、标记和用时沿用现有数据。
 
 ## 1.27.1 卡片交互修正
 

@@ -106,8 +106,8 @@ function resultView(record = currentSession) {
   const stats = summarizeSession(record);
   const { finished, total, answered, correct, wrong, unanswered, marked, focus, rows } = stats;
   const score = stats.score;
-  const rank = finished && score !== null
-    ? score >= 90 ? 'S' : score >= 80 ? 'A' : score >= 70 ? 'B' : score >= 60 ? 'C' : 'D' : '↻';
+  const grade = finished ? resultGradeFor(score) : null;
+  const rank = finished ? '—' : '↻';
   const displayValue = finished ? score : stats.completion;
   const focusHtml = focus.length ? focus.map((item, i) => `
     <div class="result-focus-row"><span>${String(i + 1).padStart(2, '0')}</span>
@@ -134,7 +134,9 @@ function resultView(record = currentSession) {
   const primary = finished
     ? (record.mode==='sequential'?`<button class="result-action-primary" data-sequence-restart="${esc(record.id)}">从本轮起点重新挑战 ↗</button>`:`<button class="result-action-primary" data-start="${esc(record.mode)}">重新挑战 ↗</button>`)
     : `<button class="result-action-primary" data-resume="${esc(record.id)}">继续本轮 · 第 ${sessionQuestionNumber(record,Math.min(record.index || 0,total-1))} 题 →</button>`;
-  return `<div class="result-screen" aria-label="${finished ? '练习结算' : '阶段总结'}">
+  const actions = `<div class="result-actions">${primary}<button class="result-action-outline" data-go="history">历史答题</button><button class="result-action-outline" data-go="mistakes">打开错题本</button></div>`;
+  return `<div class="result-screen${grade ? ' grade-result' : ''}" aria-label="${finished ? '练习结算' : '阶段总结'}">
+    ${grade ? completedResultHeader(record, stats, grade, missed.length > 0) : `
     <div class="result-system"><span><i>✦</i> STUDY / COMMISSION</span><span>PROGRESS SAVED <b>● ${finished ? '结算完成' : '进度已保存'}</b></span></div>
     <div class="result-intro">${finished ? 'COMMISSION COMPLETE' : 'TRAINING IN PROGRESS'} <span>${esc(sessionTitle(record.mode))}</span></div>
     <div class="result-hero">
@@ -154,8 +156,8 @@ function resultView(record = currentSession) {
       <div><small>已答正确率</small><strong>${stats.accuracy === null ? '—' : stats.accuracy + '%'}</strong></div>
     </div>
     <div class="result-progress"><div style="width:${displayValue ?? 0}%"></div></div>
-    <p class="result-rule">${finished ? '按答对题数折算百分制 · S ≥ 90 / A ≥ 80 / B ≥ 70 / C ≥ 60'
-      : '总结按已答题统计，未答题单独计数。进度保留，随时可继续。'}</p>
+    <p class="result-rule">${finished ? '本轮分数暂不可用。' : '总结按已答题统计，未答题单独计数。进度保留，随时可继续。'}</p>`}
+    ${grade ? actions : ''}
     ${stats.unavailable ? `<p class="review-warning">${stats.unavailable} 道题已不在当前题库，恢复原题库后可查看对应解析。</p>` : ''}
     ${studyTimeSummaryHtml(record,answered)}${sequentialSummaryHtml(record,stats)}<section class="result-focus"><div class="result-section-head"><span>REPORT / 题型表现</span><strong>看看哪类题需要加强</strong></div>
       <table class="result-type-table"><thead><tr><th scope="col">题型</th><th scope="col">已答 / 总数</th><th scope="col">答对</th><th scope="col">答错</th><th scope="col">正确率</th></tr></thead><tbody>${typeHtml}</tbody></table>
@@ -170,7 +172,7 @@ function resultView(record = currentSession) {
         ${reviewEntry(record, '整卷回顾', 'paper')}
       </div>
     </section>
-    ${retryActionsHtml(record)}${memorySummaryHtml(record)}<div class="result-actions">${primary}<button class="result-action-outline" data-go="history">历史答题</button><button class="result-action-outline" data-go="mistakes">打开错题本</button></div>
+    ${retryActionsHtml(record)}${memorySummaryHtml(record)}${grade ? '' : actions}
     <div class="result-foot">TIJIAN / STUDY SYSTEM <span>${esc(sessionDate(record.finishedAt || record.updatedAt))}</span></div>
   </div>`;
 }

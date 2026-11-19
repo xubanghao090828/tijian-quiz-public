@@ -1,0 +1,105 @@
+.result-screen.grade-result {
+  max-width: 1160px;
+  padding: clamp(12px, 2.5vw, 28px);
+}
+
+.grade-result-heading { margin: 2px 0 16px; text-align: center; }
+.grade-result-heading h1 { margin: 0; font-size: clamp(26px, 4vw, 42px); font-style: italic; }
+.grade-result-heading p { margin: 5px 0 0; font-size: 13px; color: #abb9c3; }
+
+.grade-result-grid {
+  --grade-accent: #ffdd67;
+  --grade-surface: #273032;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-areas: 'stage stage' 'score reward';
+  gap: 9px;
+  margin-bottom: 18px;
+  align-items: stretch;
+}
+.grade-result-grid[data-grade='A'] { --grade-accent: #ffadfb; --grade-surface: #293035; }
+.grade-result-grid[data-grade='B'] { --grade-accent: #a1faff; --grade-surface: #4a5559; }
+.grade-result-grid[data-grade='X'] { --grade-accent: #e5eef2; --grade-surface: #383b3d; }
+
+.grade-result-stage, .grade-result-card {
+  min-width: 0;
+  border: 1px solid #52616b;
+  border-radius: 12px;
+  padding: clamp(9px, 1.6vw, 16px);
+  background: linear-gradient(150deg, #202832, #10151d 68%);
+  box-shadow: 0 4px 0 #06090c;
+}
+.grade-result-stage {
+  grid-area: stage;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: radial-gradient(ellipse at 50% 47%, var(--grade-surface) 0 46%, #262d32 70%, #141a22 100%);
+}
+.grade-result-stage[data-grade-background='scene'] {
+  background: linear-gradient(180deg, #080d1226, #090d1140 58%, #090d11c4), var(--grade-ambient) center / cover;
+}
+.grade-result-score { grid-area: score; }
+.grade-result-reward { grid-area: reward; }
+.grade-section-title { display: flex; align-items: center; gap: 7px; margin: 0 0 8px; font-size: clamp(13px, 1.5vw, 17px); }
+.grade-section-title span {
+  display: inline-grid;
+  place-items: center;
+  min-width: 23px;
+  height: 20px;
+  padding: 0 3px;
+  background: #ffdf37;
+  color: #151515;
+  font-size: 11px;
+  transform: skewX(-7deg);
+}
+.grade-player-slot { width: min(100%, 360px); aspect-ratio: 320 / 251; margin: 0 auto; }
+.grade-video-frame {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 8% 92%, transparent), linear-gradient(180deg, transparent, #000 8% 92%, transparent);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(90deg, transparent, #000 8% 92%, transparent), linear-gradient(180deg, transparent, #000 8% 92%, transparent);
+  mask-composite: intersect;
+}
+.grade-video-frame img, .grade-video-frame video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; }
+.grade-video-frame video { visibility: hidden; pointer-events: none; }
+.grade-video-frame.is-playing video { visibility: visible; }
+.grade-video-frame > span { display: grid; place-items: center; height: 100%; font-size: clamp(100px, 24vw, 180px); font-weight: 900; font-style: italic; color: var(--grade-accent); }
+.grade-stage-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; padding-top: 4px; }
+.grade-stage-footer > strong { font-size: 22px; color: var(--grade-accent); }
+.grade-stage-controls { display: flex; gap: 6px; }
+.grade-stage-controls button, .grade-review-link {
+  min-height: 40px;
+  padding: 5px 9px;
+  border: 1px solid #657681;
+  border-radius: 9px;
+  background: #111922;
+  color: #e8f2f6;
+  font-size: 12px;
+  cursor: pointer;
+}
+.grade-stage-controls button[aria-pressed='true'] { border-color: var(--grade-accent); color: var(--grade-accent); }
+.grade-score-main { display: flex; align-items: baseline; gap: 4px; margin: 10px 0 12px; color: #ffdf45; font-variant-numeric: tabular-nums; }
+.grade-score-main strong { font-size: clamp(30px, 7vw, 60px); line-height: 1; }
+.grade-score-main span { color: #adbbc6; font-size: 12px; white-space: nowrap; }
+.grade-result-facts { display: grid; gap: 6px; margin: 0; font-size: clamp(11px, 1.2vw, 14px); }
+.grade-result-facts > div { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 2px 5px; padding: 5px 0; border-bottom: 1px solid #53607054; }
+.grade-result-facts dt, .grade-learning span { color: #b7c7d1; }
+.grade-result-facts dd { margin: 0; font-variant-numeric: tabular-nums; font-weight: 700; }
+.grade-score-thresholds, .grade-review-note { margin: 9px 0 0; font-size: 11px; line-height: 1.5; color: #adbac5; }
+.grade-learning { display: grid; gap: 5px; margin: 10px 0; padding: 8px; border-radius: 7px; background: #080e17; }
+.grade-learning span, .grade-learning small { font-size: 11px; }
+.grade-learning strong { color: var(--grade-accent); font-size: clamp(14px, 1.8vw, 21px); }
+.grade-learning progress { width: 100%; height: 8px; accent-color: #81ceff; }
+.grade-review-link { width: 100%; margin-top: 9px; }
+.grade-result > .result-actions { margin: 0 0 18px; }
+
+@media (min-width: 850px) {
+  .grade-result-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.55fr) minmax(0, 1fr);
+    grid-template-areas: 'score stage reward';
+    gap: 14px;
+  }
+}

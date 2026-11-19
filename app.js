@@ -36,6 +36,7 @@ function bank(){
 }
 function filtered(){return bank().filter(q=>(category==='全部分类'||q.category===category)&&(questionType==='全部题型'||q.type===questionType))}
 function countAttempts(){return Object.values(state.attempts).reduce((n,x)=>n+x.total,0)}
+function studyLevelProgress(total){return {total,name:total>=1000?'熟练代理人':total>=200?'进阶代理人':total>0?'见习代理人':'新手代理人'}}
 function countCorrect(){return Object.values(state.attempts).reduce((n,x)=>n+x.correct,0)}
 function esc(x){return String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function dateLabel(){return new Intl.DateTimeFormat('zh-CN',{month:'long',day:'numeric',weekday:'long'}).format(new Date())}
@@ -60,6 +61,7 @@ function render(){
   document.querySelector('#today-label').textContent=dateLabel();document.querySelector('#mistake-count').textContent=Object.keys(state.mistakes).length;
   capturePracticeDock();
   app.innerHTML=({home:homeView,practice:practiceView,mistakes:mistakes,library:libraryView,history:historyView,sync:()=>window.TijianSync?.viewHtml()||'',settings:settingsView,summary:()=>resultView(state.sessions.find(record=>record.id===summarySessionId)),review:reviewView})[view]();
+  TijianGradePlayer.bind();
   if(activePractice)app.insertAdjacentHTML('beforeend',practiceDockHtml());
   if(showFinishDock)app.insertAdjacentHTML('beforeend',`<div class="finish-dock"><strong>${session.length} / ${session.length} 已答完</strong><button data-finish>查看结算 →</button></div>`);
   const nav=document.querySelector('.question-nav-scroll');if(nav)nav.scrollTop=navScroll;bind();bindSessionReview();bindMistakeBook();bindMemorySystem();bindSequentialProgress();bindHapticSettings();bindFontSettings();bindStudyTimer();bindPracticeGestures();bindPracticeLayout();window.TijianSync?.bind();animateResultScore();if(questionMotion)playQuestionMotion(questionMotion,motionKey);window.TijianTools?.bind();window.TijianHighlighter?.bind()
@@ -87,7 +89,7 @@ function homeView(){
   }
   if(homeTab==='level'){
     const rate=total?Math.round(correct/total*100):0;
-    return `<div class="zzz-home">${tabs}${memoryHomeCard()}${sequentialCard()}<div class="commission-board home-info-board"><section class="commission-left"><div class="commission-caption">练习等级 <span>STUDY STATUS</span></div><div class="commission-inset"><div class="home-level-emblem">✦</div><h2>${total>=1000?'熟练代理人':total>=200?'进阶代理人':total>0?'见习代理人':'新手代理人'}</h2><p>累计作答 ${total} 次 · 正确率 ${rate}%。每次练习都会保存在这台设备，历史记录可逐题回看。</p><div class="level-meter"><div style="width:${Math.min(100,total%200/2)}%"></div></div><small>距离下一阶段还需 ${200-total%200} 次作答</small></div></section><section class="commission-right"><div class="commission-caption">练习档案 <span>TRAINING RECORD</span></div><div class="mission-list">${missionRow(`[记录] 已保存 ${state.sessions.length} 轮答题`,'data-go','history',true,'◷')}${missionRow(`[错题] 待复习 ${wrong} 道`,'data-go','mistakes',false,'✕')}${missionRow(`[题库] 可搜索 ${bank().length} 道`,'data-go','library',false,'⌕')}${missionRow('[开始] 进行一轮 200 题模拟','data-start','exam',false,'▶')}</div></section></div>${counters}</div>`;
+    return `<div class="zzz-home">${tabs}${memoryHomeCard()}${sequentialCard()}<div class="commission-board home-info-board"><section class="commission-left"><div class="commission-caption">练习等级 <span>STUDY STATUS</span></div><div class="commission-inset"><div class="home-level-emblem">✦</div><h2>${studyLevelProgress(total).name}</h2><p>累计作答 ${total} 次 · 正确率 ${rate}%。每次练习都会保存在这台设备，历史记录可逐题回看。</p><div class="level-meter"><div style="width:${Math.min(100,total%200/2)}%"></div></div><small>距离下一阶段还需 ${200-total%200} 次作答</small></div></section><section class="commission-right"><div class="commission-caption">练习档案 <span>TRAINING RECORD</span></div><div class="mission-list">${missionRow(`[记录] 已保存 ${state.sessions.length} 轮答题`,'data-go','history',true,'◷')}${missionRow(`[错题] 待复习 ${wrong} 道`,'data-go','mistakes',false,'✕')}${missionRow(`[题库] 可搜索 ${bank().length} 道`,'data-go','library',false,'⌕')}${missionRow('[开始] 进行一轮 200 题模拟','data-start','exam',false,'▶')}</div></section></div>${counters}</div>`;
   }
   const periods=[['today','◉','今日'],['exam','✦','模拟'],['practice','◷','专项'],['review','◇','复习']];
   const periodTabs=`<div class="period-tabs" role="tablist" aria-label="学习日程分类">${periods.map(([key,icon,label])=>`<button role="tab" aria-selected="${homePeriod===key}" class="${homePeriod===key?'active':''}" data-home-period="${key}"><i>${icon}</i>${label}</button>`).join('')}</div>`;
