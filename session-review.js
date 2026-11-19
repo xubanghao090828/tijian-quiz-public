@@ -89,11 +89,13 @@ function summarizeSession(record) {
   };
 }
 
-function openResult(id) {
-  if (!state.sessions.some(record => record.id === id)) return;
+function openResult(id, { celebrate = false } = {}) {
+  const record = state.sessions.find(item => item.id === id);
+  if (!record) return;
   leavePractice();
   summarySessionId = id;
   setView('summary');
+  if (celebrate && record.status === 'finished') playResultEntrance(resultGradeFor(record.score));
 }
 
 function reviewEntry(record, label, layout = 'single', filter = 'all', className = 'result-action-outline') {

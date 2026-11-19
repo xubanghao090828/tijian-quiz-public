@@ -1,6 +1,6 @@
 (function(){
   'use strict';
-  const modules=Promise.all([import('./tools/perspective-deck.js?v=cards1271'),import('./tools/deck-gestures.js?v=cards1271')]);
+  const modules=Promise.all([import('./tools/perspective-deck.js?v=cards129'),import('./tools/deck-gestures.js?v=cards129')]);
   modules.catch(()=>{});
   let surface=null,deck=null,gestures=null,questionKey=null,lastCard='nav',page=0,loadingKey=null,observer=null,scrollPositions=null,focusedControl=null;
   const parking=document.createDocumentFragment(),size=24;
@@ -11,7 +11,7 @@
   const cards=[{id:'nav',title:'题号导航',label:'NAVIGATION'},{id:'records',title:'本题记录',label:'ANSWER HISTORY'},{id:'highlight',title:'题干高亮',label:'HIGHLIGHT'},{id:'overview',title:'本轮概况',label:'TRAINING REPORT'}];
   function renderCard(card){
     const node=document.createElement('div');node.className='tool-card-content';
-    node.innerHTML=`<header class="tool-card-top" data-deck-handle><span>${icon(card.id)}${card.title}</span><small>${card.label}</small><i aria-hidden="true">⠿</i></header><section class="tool-card-body" data-tools-${card.id}-host aria-label="${card.title}" tabindex="0"></section>`;
+    node.innerHTML=`<header class="tool-card-top"><span>${icon(card.id)}${card.title}</span><small>${card.label}</small></header><section class="tool-card-body" data-tools-${card.id}-host aria-label="${card.title}" tabindex="0"></section>`;
     return node;
   }
   function navHtml(){
@@ -37,6 +37,7 @@
   function beforeRender(){
     if(!surface){if(loadingKey!==key())loadingKey=null;return;}
     if(key()!==questionKey){dispose();return;}
+    gestures?.cancel();
     scrollPositions=[...surface.querySelectorAll('.tool-card-body')].map(node=>[node,node.scrollTop]);
     focusedControl=surface.contains(document.activeElement)?document.activeElement:null;
     // Preserve native timelines, scroll positions and controls on same-question renders.
@@ -55,11 +56,15 @@
     const currentSlot=document.querySelector('[data-practice-cards]');if(!currentSlot)return;
     questionKey=requestedKey;page=Math.floor(index/size);
     surface=document.createElement('section');surface.className='practice-card-deck';surface.setAttribute('aria-label','题号、记录、高亮和本轮概况');
-    surface.innerHTML='<div data-tools-deck></div><p class="tool-deck-caption">标题上下滑动切换 · 露出的卡片可直接点选</p>';
+    surface.innerHTML=`<div class="tool-deck-controls" role="group" aria-label="切换卡片">
+      <button type="button" data-card-previous aria-label="上一张卡片">↓</button>
+      <div data-card-swipe>在此上下滑动翻卡</div>
+      <button type="button" data-card-next aria-label="下一张卡片">↑</button>
+    </div><div data-tools-deck></div>`;
     currentSlot.replaceChildren(surface);
     const ordered=[cards.find(c=>c.id===lastCard),...cards.filter(c=>c.id!==lastCard)];
-    deck=new loaded[0].PerspectiveCardDeck(surface.querySelector('[data-tools-deck]'),{cards:ordered,renderCard,gap:30,cardHeight:380,compact:true,duration:700,elasticity:.32,clearance:10,animate:motionEnabled});
-    gestures=new loaded[1].DeckGestures(deck,{handle:'[data-deck-handle]'});
+    deck=new loaded[0].PerspectiveCardDeck(surface.querySelector('[data-tools-deck]'),{cards:ordered,renderCard,gap:30,cardHeight:380,compact:true,duration:360,elasticity:.25,clearance:10,animate:motionEnabled});
+    gestures=new loaded[1].DeckGestures(deck,surface.querySelector('.tool-deck-controls'));
     deck.addEventListener('change',event=>{if(event.detail.reason==='complete'){lastCard=event.detail.order[0];haptic('tap');}});
     surface.addEventListener('click',event=>{
       const target=event.target.closest('button');if(!target)return;

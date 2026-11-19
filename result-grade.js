@@ -3,6 +3,27 @@ function resultGradeFor(score) {
   return score >= 90 ? 'S' : score >= 80 ? 'A' : score >= 70 ? 'B' : 'X';
 }
 
+let dismissResultEntrance = () => {};
+
+function playResultEntrance(grade) {
+  if (!grade || !motionEnabled || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  dismissResultEntrance();
+  const entrance = document.createElement('div');
+  entrance.className = 'grade-entrance';
+  entrance.dataset.grade = grade;
+  entrance.setAttribute('aria-hidden', 'true');
+  entrance.innerHTML = `<div class="grade-entrance-upper"></div><div class="grade-entrance-lower"></div>
+    <div class="grade-entrance-stamp"><span>交卷完成</span><strong>${grade}</strong><small>评级揭晓</small></div>`;
+  document.body.append(entrance);
+  const timeout = setTimeout(() => dismissResultEntrance(), 1100);
+  dismissResultEntrance = () => {
+    clearTimeout(timeout);
+    entrance.remove();
+    dismissResultEntrance = () => {};
+  };
+  entrance.querySelector('.grade-entrance-stamp').addEventListener('animationend', dismissResultEntrance, { once: true });
+}
+
 function completedResultHeader(record, stats, grade, canReviewWrong) {
   const { score, total, correct, wrong, marked, accuracy, completion } = stats;
   const progress = studyLevelProgress(countAttempts());
