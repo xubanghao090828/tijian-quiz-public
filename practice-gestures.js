@@ -39,6 +39,7 @@ function performPracticeGesture(action) {
 }
 
 function toggleQuestionNavigation() {
+  if(window.TijianTools){window.TijianTools.toggle("nav");return;}
   if (!session.length) return;
   cancelAutoNext(); haptic('tap'); navOpen = !navOpen; navMotion = navOpen; render();
   const panel = document.querySelector('#question-number-panel');

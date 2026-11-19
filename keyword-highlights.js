@@ -104,7 +104,7 @@
     return `<div class="keyword-history-list">${items.map(item => `<button type="button" class="keyword-history-row" data-keyword-record="${esc(item.id)}" aria-pressed="${item.id === candidate}"><strong>${esc(item.name)} · ${item.strokes.length} 笔</strong><small>${new Intl.DateTimeFormat('zh-CN', { month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit' }).format(new Date(item.createdAt))} · ${item.id === candidate ? '预览中' : '点此预览'}</small></button>`).join('')}</div><div class="keyword-history-preview">${html}</div><div class="keyword-history-actions"><button type="button" class="secondary" data-keyword-cancel>暂不更换</button><button type="button" class="primary" data-keyword-apply ${selected ? '' : 'disabled'}>显示这次高亮</button></div>`;
   }
   function updatePanel() {
-    const parent = document.querySelector('.practice-layout .practice-content');
+    const parent = document.querySelector('[data-tools-highlight-host]') || document.querySelector('.practice-tools-store');
     if (!parent) return;
     parent.querySelector('.keyword-settings')?.remove();
     parent.insertAdjacentHTML('beforeend', panelHtml());
@@ -197,5 +197,5 @@
   document.addEventListener('pointerdown',event=>{if(stroke&&event.pointerId!==stroke.id)cancel();},true);
   document.addEventListener('pointerup',event=>{if(stroke&&!stroke.active&&!host?.contains(event.target))cancel();});
   document.addEventListener('visibilitychange',()=>{if(document.hidden)cancel();});window.addEventListener('resize',cancel);window.addEventListener('blur',cancel);document.fonts?.addEventListener('loadingdone',cancel);
-  window.TijianHighlighter={bind};
+  window.TijianHighlighter={bind,mountSettings:updatePanel};
 })();
