@@ -10,7 +10,7 @@ function practiceControlsHtml(kind) {
   const nextLabel = index < session.length - 1 ? '下一题 →' : '前往未答题 →';
   return `<nav class="practice-dock" data-dock-kind="${kind}" aria-label="${kind === 'inline' ? '选项下方刷题操作' : '悬浮刷题操作'}">
     <button class="secondary" type="button" data-prev ${index === 0 ? 'disabled' : ''}>← 上一题</button>
-    <button class="practice-dock-numbers" type="button" data-toggle-question-nav><span>题号</span><small>${index + 1}/${session.length}</small></button>
+    <button class="practice-dock-numbers" type="button" data-toggle-question-nav aria-expanded="${navOpen}" aria-controls="question-number-panel"><span>题号</span><small>${index + 1}/${session.length}</small></button>
     ${complete ? '<button class="primary finish-cta" type="button" data-finish>查看结算 →</button>' : `<button class="primary" type="button" data-next>${nextLabel}</button>`}
   </nav>`;
 }

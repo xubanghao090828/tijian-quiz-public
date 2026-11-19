@@ -9,7 +9,7 @@ let gestureToastTimeout = null;
 
 function gestureSettingsHtml() {
   return `<section class="card settings-card gesture-settings"><div><h2>多指手势</h2><p>在答题区域操作。单指保持正常点按和滚动，屏幕边缘仍用于返回。</p></div>
-    ${[['swipe','三指左右滑','左滑下一题，右滑上一题'],['mark','四指轻点','把当前题标记不会，加入错题本'],['navigation','五指轻点','定位到底部题号卡，直接选题']].map(([key,title,description]) => `<div class="gesture-setting-row"><div><strong>${title}</strong><p>${description}</p></div><button class="settings-switch" data-gesture-setting="${key}" role="switch" aria-checked="${gesturePreferences[key]}">${gesturePreferences[key] ? '已开启' : '已关闭'}</button></div>`).join('')}
+    ${[['swipe','三指左右滑','左滑下一题，右滑上一题'],['mark','四指轻点','把当前题标记不会，加入错题本'],['navigation','五指轻点','打开或收起底部题号导航']].map(([key,title,description]) => `<div class="gesture-setting-row"><div><strong>${title}</strong><p>${description}</p></div><button class="settings-switch" data-gesture-setting="${key}" role="switch" aria-checked="${gesturePreferences[key]}">${gesturePreferences[key] ? '已开启' : '已关闭'}</button></div>`).join('')}
     <p>荣耀系统可能优先响应三指截屏等手势；若操作被截走，可在手机设置搜索「三指」检查。应用无法覆盖系统手势，原有操作按钮仍可使用。</p></section>`;
 }
 
@@ -39,7 +39,6 @@ function performPracticeGesture(action) {
 }
 
 function toggleQuestionNavigation() {
-  if(window.TijianTools){window.TijianTools.toggle("nav");return;}
   if (!session.length) return;
   cancelAutoNext(); haptic('tap'); navOpen = !navOpen; navMotion = navOpen; render();
   const panel = document.querySelector('#question-number-panel');
