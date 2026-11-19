@@ -1,26 +1,39 @@
 .practice-tools-store[hidden]{display:none!important}
 [data-practice-cards]{min-width:0;width:100%;margin-top:8px}
-.practice-card-deck{position:relative;isolation:isolate;padding:0 12px 14px;scroll-margin-top:min(15vh,104px);min-width:0;overflow:clip;overflow-clip-margin:8px}
+.practice-card-deck{position:relative;isolation:isolate;padding:0 12px 10px;scroll-margin-top:min(11vh,96px);min-width:0}
 .practice-card-deck .pcd-root{width:100%;max-width:480px}
-.practice-card-deck .pcd-card{border:2px solid #080a0f;border-radius:18px;background:#272931;box-shadow:inset 0 0 0 1px #91a4c8,3px 5px 0 #090a0e;color:#f4f6ff}
-.practice-card-deck .pcd-pick{border-radius:16px 16px 0 0;touch-action:manipulation}
-.practice-card-deck .pcd-plane{touch-action:pan-y pinch-zoom;user-select:auto;-webkit-user-select:auto;cursor:auto}
-.tool-deck-controls{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;gap:5px;max-width:480px;margin:0 auto;min-height:44px;color:#dce9ff}
-.tool-deck-controls button,.tool-deck-controls [data-card-swipe]{background:#202838;border:1px solid #62728b;border-radius:10px;color:inherit;text-align:center}
-.tool-deck-controls button{font-size:20px;cursor:pointer;touch-action:manipulation}
-.tool-deck-controls [data-card-swipe]{display:grid;place-items:center;touch-action:none;user-select:none;-webkit-user-select:none;cursor:ns-resize;font-size:13px;padding:0 4px}
-.tool-deck-controls [data-pressed],.tool-deck-controls button:active{background:#384b68;border-color:#a8caff}
-.practice-card-deck .tool-card-content{height:100%;display:flex;flex-direction:column;min-height:0;background:#242730}
-.tool-card-top{display:flex;align-items:center;gap:7px;flex:0 0 42px;padding:0 14px;border-bottom:1px solid #7c8dab55;background:linear-gradient(115deg,#303744,#252a34);color:#dbe8ff;line-height:1.2}
-.tool-card-top>span{display:flex;align-items:center;gap:7px;font-size:16px;font-style:italic;font-weight:700;white-space:nowrap}
-.tool-card-top svg{width:17px;height:17px;fill:none;stroke:#b9d0ff;stroke-width:1.8;stroke-linejoin:round;stroke-linecap:round}
-.tool-card-top>small{margin-left:auto;font-size:10px;color:#a3b4cf;letter-spacing:.04em;white-space:nowrap}
+.practice-card-deck .pcd-plane{touch-action:pan-y pinch-zoom}
+.practice-card-deck .pcd-card{--rail:#adcaff;--rail-bg:#252e40;border:1px solid #79879f;border-radius:15px 15px 13px 13px;background:#1d222e;box-shadow:0 3px 0 #090b10;color:#f4f6ff}
+.practice-card-deck .pcd-card[data-card-id=records]{--rail:#9ad7c8;--rail-bg:#233538}
+.practice-card-deck .pcd-card[data-card-id=highlight]{--rail:#dfbaf5;--rail-bg:#352d40}
+.practice-card-deck .pcd-card[data-card-id=overview]{--rail:#edcf98;--rail-bg:#38332b}
+.practice-card-deck .pcd-card[data-depth="0"]{border-color:var(--rail)}
+.practice-card-deck .pcd-pick,.tool-card-top,.tool-rail-catch{touch-action:pan-x pinch-zoom;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.practice-card-deck .pcd-pick{border-radius:14px 14px 0 0}
+.practice-card-deck .tool-card-content{height:100%;display:flex;flex-direction:column;min-height:0;background:#1d222e}
+.tool-card-top{display:flex;align-items:flex-start;gap:8px;flex:0 0 44px;padding:0 11px;border-bottom:1px solid #778cad55;background:var(--rail-bg);color:var(--rail);line-height:1;cursor:ns-resize}
+.tool-card-top::before{content:"";width:4px;height:13px;margin-top:14px;border-radius:2px;background:currentColor;transform:skewX(-12deg);flex:none}
+.tool-card-top>span,.tool-rail-tag{display:flex;align-items:center;gap:7px;min-height:40px;white-space:nowrap}
+.pcd-card:not([data-depth="0"]) .tool-card-top>span,.pcd-card:not([data-depth="0"]) .tool-rail-tag{min-height:36px}
+.pcd-card:not([data-depth="0"]) .tool-card-top::before{margin-top:12px}
+.tool-card-top>span{font-size:15px;font-weight:750}
+.tool-card-top svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linejoin:round;stroke-linecap:round;flex:none}
+.tool-rail-tag{margin-left:auto;font:600 10px ui-monospace,monospace;letter-spacing:.04em}
+.tool-card-top .tool-rail-grip{width:14px;height:15px}
+.tool-rail-steps{display:none;margin-left:0;align-self:center;gap:4px}
+.pcd-card[data-depth="0"] .tool-rail-steps{display:flex}
+.pcd-card[data-depth="0"] .tool-rail-grip{display:none}
+.tool-rail-steps button{width:32px;height:32px;display:grid;place-items:center;border:1px solid currentColor;border-radius:7px;background:#090c1440;color:inherit;padding:0;cursor:pointer}
+.tool-rail-steps button:active{background:#ffffff1c}
+.tool-rail-catch{position:absolute;z-index:10;inset:18px 8% auto;height:146px;display:none;cursor:ns-resize}
+.pcd-root[data-state]:not([data-state=idle]) .tool-rail-catch{display:block}
+.tool-deck-hint{text-align:center;font-size:11px;letter-spacing:.025em;color:#adb9cd;margin:-58px auto 46px;pointer-events:none}
 
 .tool-card-body{flex:1;min-height:0;overflow:auto;padding:14px;overscroll-behavior-y:auto;scrollbar-width:thin;scrollbar-color:#6d7f9e transparent;touch-action:pan-y pinch-zoom;contain:layout style}
 .practice-card-deck .pcd-root:not([data-state=idle]) .tool-card-body{pointer-events:none}
 .tool-face-intro{font-size:14px;color:#aebed6;margin:0 0 14px}
 .practice-card-deck button:disabled{opacity:.35;cursor:default}
-.practice-card-deck button:focus-visible,.practice-card-deck input:focus-visible{outline:2px solid #c7d9ff;outline-offset:2px}
+.practice-card-deck button:focus-visible,.practice-card-deck input:focus-visible,.tool-card-top:focus-visible{outline:2px solid #c7d9ff;outline-offset:2px}
 [data-tools-jump]{display:flex;align-items:center;gap:9px;font-size:13px;margin-bottom:12px}
 [data-tools-jump] input{width:76px;min-width:0;min-height:39px;border:2px solid #72757f;border-radius:11px;background:#101116;color:#fff;padding:6px 9px;text-align:center;font-size:15px}
 [data-tools-jump] button,.tool-number-pages button{border:1px solid #8895ae;border-radius:11px;padding:8px 12px;min-height:39px;background:#a9caff;color:#111c32;font-size:13px;cursor:pointer;box-shadow:2px 2px 0 #080a10}
@@ -39,11 +52,11 @@
 .practice-card-deck [data-tools-jump]{gap:7px;flex-wrap:wrap;font-size:14px;margin-bottom:10px}
 .practice-card-deck [data-tools-jump] input{width:68px;min-height:40px}
 .practice-card-deck [data-tools-jump]>small{margin-left:auto;font-size:12px;color:#a7b7d0}
-.practice-card-deck .tool-question-grid{grid-template-columns:repeat(6,minmax(0,1fr));gap:6px}
-.practice-card-deck .tool-question-grid button{min-height:40px;font-size:14px}
+.practice-card-deck .tool-question-grid{grid-template-columns:repeat(6,minmax(0,1fr));gap:5px}
+.practice-card-deck .tool-question-grid button{min-height:37px;font-size:14px}
 .practice-card-deck .tool-number-legend{font-size:12px;margin-bottom:8px}
-.practice-card-deck .tool-number-pages{gap:7px;margin-top:12px;font-size:12px}
-.practice-card-deck .tool-number-pages button{min-height:40px;font-size:13px;padding:7px 10px}
+.practice-card-deck .tool-number-pages{gap:7px;margin-top:9px;font-size:12px}
+.practice-card-deck .tool-number-pages button{min-height:40px;font-size:13px;padding:6px 9px}
 .practice-card-deck .question-attempts{padding:12px}
 .practice-card-deck .question-attempt-counts,.practice-card-deck .attempt-latest{font-size:14px}
 .practice-card-deck .attempt-recent{font-size:13px}
@@ -58,4 +71,6 @@ body[data-practice-active='true'] .practice-card-deck .attempt-recent-marks>span
 .practice-card-deck .tool-stats small{font-size:13px}
 .practice-card-deck .tool-time>span{font-size:14px}
 @media(min-width:701px){.practice-dock .practice-dock-numbers{display:flex}}
-@media(max-width:360px){.practice-card-deck{padding-inline:4px}.tool-card-top{padding-inline:11px}.tool-card-top>small{display:none}.tool-card-body{padding:12px}.practice-card-deck [data-tools-jump]>small{width:100%;text-align:right;margin-top:-3px}.practice-card-deck .tool-question-grid{gap:5px}}
+@media(max-width:360px){.practice-card-deck{padding-inline:9px}.tool-card-top{padding-inline:11px}.tool-rail-tag{font-size:9px}.tool-card-body{padding:12px}.practice-card-deck [data-tools-jump]{gap:5px}.practice-card-deck [data-tools-jump] input{width:46px}.practice-card-deck [data-tools-jump]>small{font-size:11px;white-space:nowrap}.practice-card-deck .tool-question-grid{gap:5px}}
+.practice-card-deck .pcd-root[data-state]:not([data-state=idle])+.tool-deck-hint{visibility:hidden}
+@media(max-width:359px){.pcd-card[data-depth="0"] .tool-rail-tag{visibility:hidden}.tool-rail-steps{margin-left:auto}.tool-card-top{gap:5px}}

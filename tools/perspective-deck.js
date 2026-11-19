@@ -53,7 +53,22 @@ export function previousPoseAt(depth, progress, height, input = {}) {
   return { y: -o.gap * (depth - advance) + bump, scale: scale + o.scaleStep * advance, z: 4 - depth };
 }
 
-const transform = pose => `translate3d(0px,${pose.y.toFixed(5)}px,0px) scale(${pose.scale.toFixed(7)})`;
+const runway = 76;
+
+/** Keep the full extraction path, folding only the moving card into the lower runway. */
+function inlinePose(depth, progress, height, options, selectedDepth, direction) {
+  const pose = direction > 0 ? poseAt(depth, progress, height, options, selectedDepth)
+    : previousPoseAt(depth, progress, height, options);
+  if (depth !== (direction > 0 ? selectedDepth : 0)) return pose;
+  const phase = progress < options.extraction
+    ? smooth(progress / options.extraction)
+    : clamp(1 - springAt((progress - options.extraction) / (1 - options.extraction), options.elasticity));
+  const fold = .81 * smooth((phase - .16) / .84);
+  const room = (height + options.clearance + runway - 8 - pose.y) / height;
+  return { ...pose, scaleY: Math.min(pose.scale * (1 - fold), room) };
+}
+
+const transform = pose => `translate3d(0px,${pose.y.toFixed(5)}px,0px) scale(${pose.scale.toFixed(7)},${(pose.scaleY ?? pose.scale).toFixed(7)})`;
 const deferred = () => { let resolve; const promise = new Promise(done => { resolve = done; }); return { promise, resolve }; };
 
 export class PerspectiveCardDeck extends EventTarget {
@@ -81,7 +96,8 @@ export class PerspectiveCardDeck extends EventTarget {
       this.pickers.set(card.id, pick); root.append(pick);
     }
     this.visibility = () => {
-      if (document.hidden && this.active && this.options.compact && !this.active.paused) {
+      if (document.hidden && this.active && this.options.compact) {
+        if (this.active.dragging) this.active.rollback = true;
         this._commit(this.active);
         return;
       }
@@ -99,13 +115,13 @@ export class PerspectiveCardDeck extends EventTarget {
     this.width = this.root.clientWidth; this.height = this.options.cardHeight ?? this.width / this.options.aspectRatio;
     this.plane.style.height = `${this.height}px`; this.plane.style.top = `${3 * this.options.gap + 18}px`;
     const backScale = 1 - 3 * this.options.scaleStep;
-    this.root.style.height = `${3 * this.options.gap + 18 + this.height * (this.options.compact ? 1 : 1 + backScale) + this.options.clearance + 24}px`;
+    this.root.style.height = `${3 * this.options.gap + 18 + this.height * (this.options.compact ? 1 : 1 + backScale) + this.options.clearance + (this.options.compact ? runway : 24)}px`;
   }
   _resize() {
     if (this.dead) return;
     const nextHeight = this.options.cardHeight ?? this.root.clientWidth / this.options.aspectRatio;
     if (Math.abs(nextHeight - this.height) < .1 && Math.abs(this.root.clientWidth - this.width) < .1) return;
-    const active = this.active, time = active?.animations[0].currentTime || 0;
+    const active = this.active, time = active?.animations[0]?.currentTime || 0;
     this._measure();
     if (active) {
       const old = active.animations;
@@ -131,19 +147,12 @@ export class PerspectiveCardDeck extends EventTarget {
     const frameSteps = o.compact ? 42 : 120;
     const samples = [...new Set([...Array.from({ length: frameSteps + 1 }, (_, i) => i / frameSteps), o.extraction])].sort((a, b) => a - b);
     const flyer = direction > 0 ? selectedDepth : 0;
-    // In an inline deck, a short dip keeps the full moving card inside the layout.
-    const travelHeight = o.compact ? 14 : this.height;
     const animations = from.map((id, depth) => {
       const element = this.elements.get(id); element.style.willChange = 'transform'; element.style.zIndex = String(4 - depth);
       const pose = direction > 0 ? poseAt : previousPoseAt;
-      const keyframes = samples.map(p => {
-        const frame = { offset: p, transform: transform(pose(depth, p, travelHeight, o, selectedDepth)) };
-        if (o.compact && depth === flyer) {
-          // Switch stacking order while the flyer is out of sight.
-          frame.opacity = smooth(Math.abs(p - o.extraction) / .20);
-        }
-        return frame;
-      });
+      const keyframes = samples.map(p => ({ offset: p, transform: transform(o.compact
+        ? inlinePose(depth, p, this.height, o, selectedDepth, direction)
+        : pose(depth, p, this.height, o, selectedDepth)) }));
       return element.animate(keyframes, { duration: o.duration, fill: 'both', easing: 'linear' });
     });
     // One discrete z change on the SAME native timeline as the transforms.
@@ -218,7 +227,7 @@ export class PerspectiveCardDeck extends EventTarget {
     if (this.active.direction !== direction) return false;
     const p = clamp(amount, 0, .28), time = p * this.options.duration;
     this.active.animations.forEach(animation => { animation.currentTime = Math.min(this.options.duration - .001, Math.max(.001, time)); });
-    this._emit('drag'); return true;
+    return true;
   }
   releaseDrag(commit, velocity = 0) {
     const active = this.active; if (!active?.dragging) return;

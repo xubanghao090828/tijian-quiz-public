@@ -1,17 +1,19 @@
 (function(){
   'use strict';
-  const modules=Promise.all([import('./tools/perspective-deck.js?v=cards129'),import('./tools/deck-gestures.js?v=cards129')]);
+  const modules=Promise.all([import('./tools/perspective-deck.js?v=cards130'),import('./tools/deck-gestures.js?v=cards130')]);
   modules.catch(()=>{});
-  let surface=null,deck=null,gestures=null,questionKey=null,lastCard='nav',page=0,loadingKey=null,observer=null,scrollPositions=null,focusedControl=null;
+  let surface=null,deck=null,gestures=null,questionKey=null,cardOrder=null,page=0,loadingKey=null,observer=null,scrollPositions=null,focusedControl=null;
   const parking=document.createDocumentFragment(),size=24;
   const ids=['nav','records','highlight','overview'];
   const paths={nav:'<rect x="3" y="3" width="18" height="18" rx="4"/><path d="M8 3v18M16 3v18M3 8h18M3 16h18"/>',records:'<circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/>',highlight:'<path d="m5 15 10-10 4 4L9 19H5zM4 21h16M13 7l4 4"/>',overview:'<path d="M4 20V4M4 20h17M8 15v-4M13 15V7M18 15V4"/>'};
   const icon=id=>`<svg viewBox="0 0 24 24" aria-hidden="true">${paths[id]}</svg>`;
+  const chevron=direction=>`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${direction===1?'m7 14 5-5 5 5':'m7 10 5 5 5-5'}"/></svg>`;
+  const grip='<svg class="tool-rail-grip" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 7 3-3 3 3M9 17l3 3 3-3M7 12h10"/></svg>';
   const key=()=>view==='practice'&&currentSession?.status==='active'&&session[index]?`${currentSession.id}:${index}:${session[index].id}`:null;
-  const cards=[{id:'nav',title:'题号导航',label:'NAVIGATION'},{id:'records',title:'本题记录',label:'ANSWER HISTORY'},{id:'highlight',title:'题干高亮',label:'HIGHLIGHT'},{id:'overview',title:'本轮概况',label:'TRAINING REPORT'}];
+  const cards=[{id:'nav',title:'题号导航',label:'01 / NAV'},{id:'records',title:'本题记录',label:'02 / LOG'},{id:'highlight',title:'题干高亮',label:'03 / MARK'},{id:'overview',title:'本轮概况',label:'04 / RUN'}];
   function renderCard(card){
     const node=document.createElement('div');node.className='tool-card-content';
-    node.innerHTML=`<header class="tool-card-top"><span>${icon(card.id)}${card.title}</span><small>${card.label}</small></header><section class="tool-card-body" data-tools-${card.id}-host aria-label="${card.title}" tabindex="0"></section>`;
+    node.innerHTML=`<header class="tool-card-top" data-card-rail tabindex="-1"><span>${icon(card.id)}${card.title}</span><div class="tool-rail-tag">${card.label}${grip}</div><div class="tool-rail-steps"><button type="button" data-card-step="-1" aria-label="上一张卡片">${chevron(-1)}</button><button type="button" data-card-step="1" aria-label="下一张卡片">${chevron(1)}</button></div></header><section class="tool-card-body" data-tools-${card.id}-host aria-label="${card.title}" tabindex="0"></section>`;
     return node;
   }
   function navHtml(){
@@ -56,16 +58,16 @@
     const currentSlot=document.querySelector('[data-practice-cards]');if(!currentSlot)return;
     questionKey=requestedKey;page=Math.floor(index/size);
     surface=document.createElement('section');surface.className='practice-card-deck';surface.setAttribute('aria-label','题号、记录、高亮和本轮概况');
-    surface.innerHTML=`<div class="tool-deck-controls" role="group" aria-label="切换卡片">
-      <button type="button" data-card-previous aria-label="上一张卡片">↓</button>
-      <div data-card-swipe>在此上下滑动翻卡</div>
-      <button type="button" data-card-next aria-label="下一张卡片">↑</button>
-    </div><div data-tools-deck></div>`;
+    surface.innerHTML=`<div data-tools-deck></div><p class="tool-deck-hint">滑动卡片标题翻动 · 点标题直达</p>`;
     currentSlot.replaceChildren(surface);
-    const ordered=[cards.find(c=>c.id===lastCard),...cards.filter(c=>c.id!==lastCard)];
-    deck=new loaded[0].PerspectiveCardDeck(surface.querySelector('[data-tools-deck]'),{cards:ordered,renderCard,gap:30,cardHeight:380,compact:true,duration:360,elasticity:.25,clearance:10,animate:motionEnabled});
-    gestures=new loaded[1].DeckGestures(deck,surface.querySelector('.tool-deck-controls'));
-    deck.addEventListener('change',event=>{if(event.detail.reason==='complete'){lastCard=event.detail.order[0];haptic('tap');}});
+    const root=surface.querySelector('[data-tools-deck]');
+    const ordered=cardOrder?cardOrder.map(id=>cards.find(card=>card.id===id)):cards;
+    deck=new loaded[0].PerspectiveCardDeck(root,{cards:ordered,renderCard,gap:34,cardHeight:360,compact:true,duration:620,elasticity:.50,clearance:12,extraction:.40,animate:motionEnabled});
+    // This hit surface exists only in flight, so a quick second swipe can start
+    // where the rails were while their faces are moving or temporarily inert.
+    const catchRail=document.createElement('div');catchRail.className='tool-rail-catch';catchRail.dataset.cardRail='';catchRail.setAttribute('aria-hidden','true');root.append(catchRail);
+    gestures=new loaded[1].DeckGestures(deck);
+    deck.addEventListener('change',event=>{if(event.detail.reason==='complete'){cardOrder=event.detail.order;haptic('tap');}});
     surface.addEventListener('click',event=>{
       const target=event.target.closest('button');if(!target)return;
       if(target.dataset.toolsPage!==undefined){page=Number(target.dataset.toolsPage);refresh();}
@@ -86,5 +88,5 @@
     await deck.select(id);
   }
   function bind(){mount();}
-  window.TijianTools={open,bind,beforeRender,isOpen:()=>false,close:()=>{},toggle:open,snapshot:()=>({open:false,inline:!!surface?.isConnected,selected:deck?.order[0]||lastCard,deck:deck?.snapshot()||null})};
+  window.TijianTools={open,bind,beforeRender,isOpen:()=>false,close:()=>{},toggle:open,snapshot:()=>({open:false,inline:!!surface?.isConnected,selected:deck?.order[0]||cardOrder?.[0]||'nav',deck:deck?.snapshot()||null})};
 })();
