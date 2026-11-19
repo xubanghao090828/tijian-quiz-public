@@ -1,0 +1,183 @@
+/** Standalone native WAAPI deck. No framework, dependencies or application state. */
+const clamp = (value, min = 0, max = 1) => Math.min(max, Math.max(min, value));
+const smooth = value => { const t = clamp(value); return t * t * (3 - 2 * t); };
+const mix = (a, b, t) => a + (b - a) * t;
+const defaults = Object.freeze({ gap: 22, scaleStep: .08, duration: 700, elasticity: .55, aspectRatio: 2, clearance: 14, extraction: .38 });
+function optionsOf(input) {
+  const out = { ...defaults, ...input };
+  const limits = { gap: [8, 42], scaleStep: [.03, .15], duration: [240, 2400], elasticity: [0, 1], aspectRatio: [1.6, 3], clearance: [8, 40], extraction: [.3, .48] };
+  for (const [key, [min, max]] of Object.entries(limits)) {
+    if (!Number.isFinite(out[key]) || out[key] < min || out[key] > max) throw new RangeError(`Invalid deck option: ${key}`);
+  }
+  return out;
+}
+
+/** A normalized, damped step response, with a C1 tail landing exactly at rest. */
+export function springAt(time, elasticity = defaults.elasticity) {
+  const t = clamp(time), damping = .88 - .35 * elasticity, omega = 10.5;
+  const decay = damping * omega, frequency = omega * Math.sqrt(1 - damping * damping);
+  const response = 1 - Math.exp(-decay * t) * (Math.cos(frequency * t) + decay / frequency * Math.sin(frequency * t));
+  return mix(response, 1, smooth((t - .78) / .22));
+}
+
+/** Pure geometry: identity/order/content are intentionally outside this function. */
+export function poseAt(depth, progress, height, input = {}) {
+  const o = { ...defaults, ...input }, p = clamp(progress), scale = 1 - depth * o.scaleStep;
+  if (depth === 3) {
+    const below = height + o.clearance;
+    if (p < o.extraction) return { y: mix(-3 * o.gap, below, smooth(p / o.extraction)), scale, z: 1 };
+    const rise = springAt((p - o.extraction) / (1 - o.extraction), o.elasticity);
+    return { y: mix(below, 0, rise), scale: mix(scale, 1, rise), z: 5 };
+  }
+  const retreat = smooth(p / .85);
+  const bumpPhase = (p - .65) / .24;
+  const bump = bumpPhase > 0 && bumpPhase < 1 ? Math.sin(Math.PI * bumpPhase) ** 2 * height * .008 : 0;
+  return { y: -o.gap * (depth + retreat) + bump, scale: scale - o.scaleStep * retreat, z: 4 - depth };
+}
+
+const transform = pose => `translate3d(0px,${pose.y.toFixed(5)}px,0px) scale(${pose.scale.toFixed(7)})`;
+const deferred = () => { let resolve; const promise = new Promise(done => { resolve = done; }); return { promise, resolve }; };
+
+export class PerspectiveCardDeck extends EventTarget {
+  constructor(root, { cards, renderCard, ...input } = {}) {
+    super();
+    if (!(root instanceof HTMLElement) || !Array.isArray(cards) || cards.length !== 4 || typeof renderCard !== 'function') throw new TypeError('Provide a root, four cards and renderCard(card).');
+    if (new Set(cards.map(card => card.id)).size !== 4 || cards.some(card => typeof card.id !== 'string' || !card.id)) throw new TypeError('Card ids must be unique strings.');
+    this.root = root; this.options = optionsOf(input); this.content = new Map(cards.map(card => [card.id, card]));
+    this.order = cards.map(card => card.id); this.initialOrder = [...this.order]; this.elements = new Map();
+    this.active = null; this.queued = null; this.pendingOptions = null; this.dead = false; this.cycles = 0;
+    this.reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+    root.classList.add('pcd-root'); root.setAttribute('role', 'group'); root.setAttribute('aria-label', '四层卡片堆');
+    this.plane = document.createElement('div'); this.plane.className = 'pcd-plane';
+    for (const card of cards) {
+      const element = document.createElement('article'); element.className = 'pcd-card'; element.dataset.cardId = card.id;
+      const content = renderCard(card);
+      if (!(content instanceof Node)) throw new TypeError('renderCard must return a DOM Node.');
+      element.append(content); this.elements.set(card.id, element); this.plane.append(element);
+    }
+    root.append(this.plane);
+    this.visibility = () => {
+      if (document.hidden && this.active && !this.active.paused) { this.autoPaused = true; this.pause(); }
+      else if (!document.hidden && this.autoPaused) { this.autoPaused = false; this.resume(); }
+    };
+    this.reducedChange = () => { if (this.active && this.reducedMotion.matches) this._commit(this.active); };
+    document.addEventListener('visibilitychange', this.visibility); this.reducedMotion.addEventListener('change', this.reducedChange);
+    this.resizeObserver = new ResizeObserver(() => this._resize()); this.resizeObserver.observe(this.plane);
+    this._measure(); this._rest(); this._emit('ready');
+  }
+
+  _emit(reason) { this.root.dataset.state = this.active ? this.active.paused ? 'paused' : 'running' : 'idle'; this.dispatchEvent(new CustomEvent('change', { detail: { reason, ...this.snapshot() } })); }
+  _measure() {
+    this.height = this.root.clientWidth / this.options.aspectRatio;
+    this.plane.style.height = `${this.height}px`; this.plane.style.top = `${3 * this.options.gap + 18}px`;
+    const backScale = 1 - 3 * this.options.scaleStep;
+    this.root.style.height = `${3 * this.options.gap + 18 + this.height * (1 + backScale) + this.options.clearance + 24}px`;
+  }
+  _resize() {
+    if (this.dead) return;
+    const nextHeight = this.root.clientWidth / this.options.aspectRatio;
+    if (Math.abs(nextHeight - this.height) < .1) return;
+    const active = this.active, time = active?.animations[0].currentTime || 0;
+    this._measure();
+    if (active) {
+      const old = active.animations;
+      active.animations = this._animations(active.from, time, active.paused, active.rate);
+      old.forEach(animation => animation.cancel()); this._watch(active);
+    } else this._rest();
+    this._emit('resize');
+  }
+  _rest() {
+    this.order.forEach((id, depth) => {
+      const element = this.elements.get(id);
+      element.style.transform = transform({ y: -depth * this.options.gap, scale: 1 - depth * this.options.scaleStep });
+      element.style.zIndex = String(4 - depth); element.style.willChange = '';
+      element.dataset.depth = depth; element.inert = depth !== 0;
+      element.setAttribute('aria-hidden', String(depth !== 0));
+    });
+    this.root.dataset.front = this.order[0];
+  }
+  _animations(from, time = 0, paused = false, rate = 1) {
+    const o = this.options, samples = [...new Set([...Array.from({ length: 121 }, (_, i) => i / 120), o.extraction])].sort((a, b) => a - b);
+    const animations = from.map((id, depth) => {
+      const element = this.elements.get(id); element.style.willChange = 'transform';
+      const keyframes = samples.map(p => ({ offset: p, transform: transform(poseAt(depth, p, this.height, o)) }));
+      return element.animate(keyframes, { duration: o.duration, fill: 'both', easing: 'linear' });
+    });
+    // One discrete z change on the SAME native timeline as the transforms.
+    // At this instant the back card's top is BELOW every other card's bottom.
+    animations.push(this.elements.get(from[3]).animate([
+      { offset: 0, zIndex: '1', easing: 'steps(1,end)' },
+      { offset: o.extraction, zIndex: '5' }, { offset: 1, zIndex: '5' }
+    ], { duration: o.duration, fill: 'both' }));
+    const start = document.timeline.currentTime - time / rate;
+    for (const animation of animations) { animation.playbackRate = rate; animation.startTime = start; if (paused) { animation.pause(); animation.currentTime = time; } }
+    return animations;
+  }
+  _watch(active) {
+    const generation = active.animations;
+    Promise.all(generation.map(animation => animation.finished)).then(() => {
+      if (this.active === active && active.animations === generation) this._commit(active);
+    }).catch(() => {}); // Canceled generation is replaced on resize or disposal.
+  }
+  _begin(request, paused = false) {
+    const active = { from: [...this.order], request, paused, rate: 1, animations: [] };
+    this.active = active;
+    if (this.reducedMotion.matches) { this._commit(active); return; }
+    active.animations = this._animations(active.from, 0, paused); this._watch(active); this._emit('start');
+  }
+  _commit(active) {
+    if (this.active !== active || this.dead) return;
+    this.order = [active.from[3], ...active.from.slice(0, 3)]; this.cycles++; this.active = null;
+    // Write stable poses before removing native fill effects; node identities never move.
+    this._rest(); active.animations.forEach(animation => animation.cancel());
+    if (this.pendingOptions) { this.options = this.pendingOptions; this.pendingOptions = null; this._measure(); this._rest(); }
+    active.request.resolve({ status: 'completed', order: [...this.order] });
+    const queued = this.queued; this.queued = null;
+    if (queued) this._begin(queued);
+    this._emit('complete');
+  }
+  shuffle() {
+    if (this.dead) return Promise.resolve({ status: 'destroyed' });
+    if (this.active) { if (!this.queued) { this.queued = deferred(); this._emit('queued'); } return this.queued.promise; }
+    const request = deferred(); this._begin(request); return request.promise;
+  }
+  /** Cancel future requests, keeping the current extraction/landing intact. */
+  cancelQueued() { this.queued?.resolve({ status: 'canceled' }); this.queued = null; this._emit('queue-cleared'); }
+  pause() { if (this.active) { this.active.paused = true; this.active.animations.forEach(animation => animation.pause()); this._emit('pause'); } }
+  resume() {
+    const active = this.active; if (!active?.paused) return;
+    const time = active.animations[0].currentTime || 0, start = document.timeline.currentTime - time / active.rate;
+    active.paused = false;
+    active.animations.forEach(animation => { animation.play(); animation.startTime = start; }); this._emit('resume');
+  }
+  /** Deterministic inspection of real native animations, with no order commit. */
+  seek(progress) {
+    if (this.dead || this.reducedMotion.matches) return;
+    this.cancelQueued(); if (!this.active) this._begin(deferred(), true); else this.pause();
+    const time = Math.min(clamp(progress) * this.options.duration, this.options.duration - .001);
+    this.active.animations.forEach(animation => { animation.currentTime = time; }); this._emit('seek');
+  }
+  configure(input) {
+    const next = optionsOf({ ...(this.pendingOptions || this.options), ...input });
+    if (this.active) this.pendingOptions = next;
+    else { this.options = next; this._measure(); this._rest(); }
+    this._emit('configure');
+  }
+  reset() {
+    // Explicit reset returns instantly to a stable original deck; it is not a shuffle.
+    this.cancelQueued(); const active = this.active; this.active = null;
+    active?.animations.forEach(animation => animation.cancel()); active?.request.resolve({ status: 'reset' });
+    if (this.pendingOptions) { this.options = this.pendingOptions; this.pendingOptions = null; this._measure(); }
+    this.order = [...this.initialOrder]; this.cycles = 0; this._rest(); this._emit('reset');
+  }
+  snapshot() {
+    const progress = this.active ? clamp((this.active.animations[0]?.currentTime || 0) / this.options.duration) : 0;
+    return { order: [...this.order], nextOrder: [this.order[3], ...this.order.slice(0, 3)], progress, cycles: this.cycles, queued: !!this.queued, running: !!this.active, paused: !!this.active?.paused, options: { ...(this.pendingOptions || this.options) }, height: this.height, reducedMotion: this.reducedMotion.matches };
+  }
+  destroy() {
+    if (this.dead) return; this.dead = true; this.queued?.resolve({ status: 'destroyed' });
+    const active = this.active; this.active = null; active?.animations.forEach(animation => animation.cancel()); active?.request.resolve({ status: 'destroyed' });
+    this.resizeObserver.disconnect(); document.removeEventListener('visibilitychange', this.visibility); this.reducedMotion.removeEventListener('change', this.reducedChange);
+    this.plane.remove(); this.root.style.height = ''; this.elements.clear();
+  }
+}
