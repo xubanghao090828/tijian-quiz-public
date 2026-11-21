@@ -93,6 +93,7 @@
       let target=oldTarget?TijianMerge.mergeSnapshots(latest,oldTarget):latest;
       await B.create(flow.profile,target,'合并前的另一空间记录');
       const merged=TijianMerge.mergeSnapshots(target,await reconcileQuestionIds(target,source));
+      await window.TijianStudyBackup?.transfer(S.profile().id,flow.profile.id);
       localStorage.setItem(targetKey,JSON.stringify(merged));
       S.persistProfile(flow.profile);flow=null;saveFlow();location.hash='';location.reload();
     }catch(error){S.resume();throw error}

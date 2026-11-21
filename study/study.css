@@ -1,0 +1,27 @@
+.study-view{max-width:860px;margin:0 auto;min-width:0}
+.study-heading,.study-progress{display:flex;align-items:center;justify-content:space-between;gap:.7rem;flex-wrap:wrap}
+.study-heading{margin:.25rem 0 .9rem}
+.study-heading h1{margin:.35rem 0 0}
+.study-pane{padding:clamp(.85rem,3vw,1.5rem);margin:.8rem 0;min-width:0;overflow-wrap:anywhere}
+.study-pane h2{margin:.5rem 0 .65rem}
+.study-pane p{margin:.55rem 0}
+.study-actions{display:flex;gap:.55rem;align-items:center;flex-wrap:wrap;margin:.65rem 0}
+.study-view button:disabled{opacity:.55;cursor:not-allowed}
+.study-view .primary,.study-view .secondary{min-height:44px}
+.study-view input:not([type=checkbox]),.study-view textarea,.study-view select{display:block;width:100%;min-width:0;margin:.3rem 0 .7rem;padding:.6rem .7rem;background:#151820;color:#f6f7fb;border:1px solid #65718a;border-radius:9px;font:inherit;font-size:16px;box-sizing:border-box}
+.study-view select{width:auto;max-width:100%;min-height:44px}
+.study-view textarea{resize:vertical;line-height:1.55}
+.study-pane fieldset{border:1px solid #536078;border-radius:10px;padding:.75rem;margin:.7rem 0;min-width:0}
+.study-pane legend{padding:0 .25rem;max-width:100%;overflow-wrap:anywhere}
+.study-pane blockquote{margin:.4rem 0 1rem;padding:.75rem;background:#1c2230;border-left:3px solid #a5caff;white-space:pre-wrap;overflow-wrap:anywhere}
+.study-pane details summary{cursor:pointer;padding:.45rem 0}
+.study-status,.study-error,.study-note{border:1px solid #5d6b8c;border-radius:9px;padding:.55rem .75rem;background:#20283a}
+.study-error{border-color:#ff8888;color:#ffd1d1;background:#3f262b}
+.study-status[hidden],.study-error[hidden]{display:none}
+.study-answer{font-size:clamp(1.4rem,5vw,2.2rem);font-weight:700}
+.study-items{list-style:none;margin:0;padding:0}
+.study-items li,.study-history{padding:.55rem .1rem;border-bottom:1px solid #545969}
+.study-items small{display:block;color:#b1c3dd;margin:.15rem 0 .35rem}
+.study-report{max-height:15rem;overflow:auto;padding-left:1.4rem}
+.study-links a{color:#bbd6ff;text-decoration:underline;display:inline-block;margin-right:.8rem}
+.study-view :focus-visible{outline:2px solid #b8d5ff;outline-offset:3px}

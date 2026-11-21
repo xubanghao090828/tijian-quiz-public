@@ -16,6 +16,8 @@
   const read=key=>{try{return JSON.parse(localStorage.getItem(key))}catch{return null}};
   async function create(profile,data,label){
     const backup={id:crypto.randomUUID(),createdAt:Date.now(),label,profile:JSON.parse(JSON.stringify(profile)),state:JSON.parse(JSON.stringify(data))};
+    const study=await root.TijianStudyBackup?.pack(profile.id);
+    if(root.TijianStudyBackup?.has(study))backup.study=study;
     await transaction('readwrite',store=>store.add(backup));
     return backup;
   }
@@ -28,13 +30,14 @@
     // Restore as an independent space; a restore never rolls back shared cloud data.
     const profile={id:crypto.randomUUID(),deviceId:crypto.randomUUID(),secret:secret(),name:currentProfile.name};
     const data={...backup.state,cursor:0,sessionCursor:0,highlightCursor:0,highlights:(backup.state.highlights||[]).filter(TijianHighlights.valid).map(item=>({...item,dirty:true})),events:(backup.state.events||[]).map(({seq,...event})=>event),sessions:(backup.state.sessions||[]).map(record=>({...record,dirty:true}))};
+    await root.TijianStudyBackup?.restore(profile.id,backup.study);
     localStorage.setItem('tijian-v1-'+profile.id,JSON.stringify(data));
     localStorage.setItem('tijian-active-profile',JSON.stringify(profile));
     location.reload();
   }
   async function download(id){
     const backup=await get(id);if(!backup)throw Error('找不到这份备份');
-    const contents=JSON.stringify({format:'tijian-backup-v1',createdAt:backup.createdAt,label:backup.label,state:backup.state},null,2);
+    const contents=JSON.stringify({format:backup.study?'tijian-backup-v2':'tijian-backup-v1',createdAt:backup.createdAt,label:backup.label,state:backup.state,...(backup.study?{study:backup.study}:{})},null,2);
     const fileName='题间备份-'+new Date(backup.createdAt).toISOString().slice(0,10)+'.json';
     if(window.Capacitor?.isNativePlatform?.()){
       const plugin=Capacitor.Plugins?.QuizBackup||Capacitor.registerPlugin('QuizBackup');await plugin.save({fileName,contents});return;
@@ -46,11 +49,13 @@
     if(file.size>20000000)throw Error('备份文件过大，请使用小于 20 MB 的题间备份');
     let backup;try{backup=JSON.parse(await file.text())}catch{throw Error('不是有效的备份文件')}
     const data=backup.state;
-    if((data?.highlights!==undefined&&(!Array.isArray(data.highlights)||!data.highlights.every(TijianHighlights.valid)))||backup.format!=='tijian-backup-v1'||!data||!Array.isArray(data.sessions)||!Array.isArray(data.events)
+    if((data?.highlights!==undefined&&(!Array.isArray(data.highlights)||!data.highlights.every(TijianHighlights.valid)))||!['tijian-backup-v1','tijian-backup-v2'].includes(backup.format)||!data||!Array.isArray(data.sessions)||!Array.isArray(data.events)
       ||!data.sessions.every(s=>s&&/^[a-f0-9-]{36}$/.test(s.id)&&Array.isArray(s.questionIds)&&Array.isArray(s.answers)&&s.answers.length===s.questionIds.length)
       ||!data.events.every(e=>e&&/^[a-f0-9-]{36}$/.test(e.id)&&Number.isInteger(e.total)&&e.total>=0&&Number.isInteger(e.correct)&&e.correct>=0&&e.correct<=e.total&&Number.isFinite(e.createdAt)))throw Error('备份内容不完整，已保留当前记录');
+    if((backup.format==='tijian-backup-v2'||backup.study!==undefined)&&!root.TijianStudySchema?.validateBackup(backup.study))throw Error('学习模块备份内容不完整，已保留当前记录');
     if(!confirm(`文件中有 ${data.sessions.length} 轮记录，恢复为独立学习空间？当前记录会先备份。`))return;
-    const saved=await create(currentProfile,data,'从文件导入的备份');
+    const saved={id:crypto.randomUUID(),createdAt:Date.now(),label:'从文件导入的备份',profile:JSON.parse(JSON.stringify(currentProfile)),state:data,...(backup.study?{study:backup.study}:{})};
+    await transaction('readwrite',store=>store.add(saved));
     await restore(saved.id,currentProfile,currentState);
   }
   root.TijianBackup={create,list,get,restore,download,importFile,read,secret};

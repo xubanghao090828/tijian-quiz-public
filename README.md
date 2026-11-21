@@ -1,12 +1,18 @@
 # 题间
 
-当前网页已回滚到 1.25.0。[下载荣耀覆盖安装包（1.25.0 内容）](https://github.com/xubanghao090828/tijian-quiz-public/releases/download/v1.30.1/Tijian-Honor-offline-v1.30.1.apk)。已安装 1.30.0 的手机可直接覆盖更新。
+[下载荣耀 APK 1.31.0](https://github.com/xubanghao090828/tijian-quiz-public/releases/download/v1.31.0/Tijian-Honor-offline-v1.31.0.apk)。已有安装可直接覆盖更新。
 
 数控题库刷题网页与荣耀 Android 应用。内置 1,460 道题及解析，可离线刷题，无需登录。
 
 - [打开网页](https://xubanghao090828.github.io/tijian-quiz-public/)
 - [下载 Android 1.25.0 APK](https://github.com/xubanghao090828/tijian-quiz-public/releases/download/v1.25.0/Tijian-Honor-offline-v1.25.0.apk)
 - [版本发布页](https://github.com/xubanghao090828/tijian-quiz-public/releases)
+
+## 1.31.0 英语背默和简答练习
+
+- 首页「学习日程」新增两个入口。支持 CSV／XLSX 导入、双向背默、简答得分点自评、订正和断网续做。
+- 两个模块各用独立 FSRS-7 复习；简答修订评分不重复计算复习次数。
+- 已配对设备可手动开启新模块记录同步。原题库、错题和 1.25.0 界面保留。
 
 ## 1.25.0 历史重刷与全部单题记录
 
