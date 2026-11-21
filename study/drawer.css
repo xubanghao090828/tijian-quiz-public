@@ -39,3 +39,7 @@ html[data-motion="off"] .study-entry-drawer::before,html[data-motion="off"] .stu
   .study-startbar .zzz-home-tabs button,.study-startbar .zzz-home-tabs button.active{min-width:0;width:100%;padding-inline:5px;font-size:clamp(11px,3.1vw,15px)}
   .study-startbar .zzz-home-tabs button.active::after{right:3px}
 }
+
+/* Vertical scrolling and pinch zoom remain native; the home gutter handles horizontal intent. */
+body[data-view="home"] .app-shell>.main{touch-action:pan-y pinch-zoom}
+html.study-edge-drag{user-select:none;-webkit-user-select:none}
