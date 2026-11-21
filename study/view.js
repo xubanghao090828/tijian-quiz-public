@@ -5,7 +5,7 @@
   const directions={zh2en:'看中文拼英文',en2zh:'看英文写中文'};
   const space=()=>root.TIJIAN_PROFILE.id;
   const escape=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  let aiRequest=null,historyEdit=null,model=null,serial=0,entry=null,busy=false,pendingWrite=Promise.resolve(),problem='',message='',importer=null;
+  let aiRequest=null,aiMode=null,historyEdit=null,model=null,serial=0,entry=null,busy=false,pendingWrite=Promise.resolve(),problem='',message='',importer=null;
   const op=(table,value,method)=>({table,value,method});
   const draft=()=>model?.drafts.find(d=>d.id===model.kind);
   const commands=(cmd,label,primary=false,disabled=false)=>`<button type="button" class="${primary?'primary':'secondary'}" data-study-do="${cmd}" ${disabled?'disabled':''}>${escape(label)}</button>`;
@@ -40,7 +40,7 @@
     const el=document.querySelector('[data-study-view]');if(!el)return;
     if(model?.kind===kind&&model.space===space()&&model.cards){draw(el);if(model.syncOn)syncInBackground();return;}
     const request=++serial,spaceId=space();
-    problem=message='';importer=null;entry=null;historyEdit=null;
+    problem=message='';importer=null;entry=null;historyEdit=null;aiMode=null;
     el.innerHTML='<p class="card study-pane">正在读取本机学习记录…</p>';
     try{
       await pendingWrite.catch(()=>{});const data=await reload();
@@ -88,13 +88,29 @@
       ${!list.length?`<p>先导入自己的${kind==='vocab'?'词表':'简答题库'}，或者用示例表体验。</p>${commands('library','前往导入',true)}`:''}</section>`;
   }
   function aiConfig(){
-    const config=model.ai;
-    return `<section class="card study-pane"><h2>电脑 Ollama</h2><p>在电脑运行模型。打开本页的设备须能访问该地址；从手机连接时填写电脑的局域网地址。未启用或连不上时可直接自评。</p>
-      <details><summary>连接不成功？</summary><p>电脑 Ollama 须允许当前网页来源 <code>${escape(location.origin)}</code>。可在 Ollama 环境设置里加入该来源并重启。手机访问时还需电脑监听局域网，且手机、电脑在同一网络。不要将 Ollama 端口暴露到公网。</p></details>
-      <form data-study-form="ai"><label>服务地址<input name="href" required type="url" placeholder="http://127.0.0.1:11434" value="${escape(config?.href)}"></label>
-      <label>模型名称<input name="model" required value="${escape(config?.model)}" placeholder="例如 qwen3.5:9b"></label>
-      <label class="study-check"><input name="enabled" type="checkbox" ${config?.enabled?'checked':''}> 提交简答后把该题和答案发送到此 Ollama 批改</label>
-      <div class="study-actions"><button type="submit" class="primary">保存配置</button>${commands('ai-test','测试连接')}</div></form></section>`;
+    const settings=A.settings(space()),type=aiMode||settings.active,config=settings.profiles[type];
+    const info={
+      ollama:{url:'http://127.0.0.1:11434',model:'qwen3.5:9b',desc:'电脑上启动 Ollama。手机连接电脑时，填写电脑的局域网 IP，不能填手机自己的 127.0.0.1。'},
+      cloud:{url:'https://api.deepseek.com',model:'deepseek-flash',desc:'使用自己的 DeepSeek API Key。密钥只保存在本次应用会话，关闭或刷新后需重新输入。联网批改可能产生服务费用。'},
+      phone:{url:'http://127.0.0.1:11434/v1',model:'运行器中显示的模型 ID',desc:'在荣耀上单独打开 Thinai 或 AiPaca，加载模型并启动本机 API，再按运行器实际端口填写。推荐在题间 APK 里使用。'}
+    }[type];
+    const hasKey=config&&A.hasKey(space(),config);
+    return `<section class="card study-pane"><h2>AI 连接</h2><p>一次只使用选中的连接。可随时改用本题离线自评。</p>
+      <label>连接方式<select data-study-ai-mode>${Object.entries(A.types).map(([id,name])=>`<option value="${id}" ${id===type?'selected':''}>${escape(name)}${settings.active===id&&settings.profiles[id]?'（当前）':''}</option>`).join('')}</select></label>
+      <p>${escape(info.desc)}</p>
+      ${type==='ollama'?`<details><summary>电脑连接帮助</summary><p>使用网页时，电脑 Ollama 需允许当前来源 <code>${escape(location.origin)}</code>。手机连电脑还需同一局域网和允许的监听地址。</p></details>`:type==='phone'?'<p><a href="https://github.com/Abhinivesh2729/Thinai" target="_blank" rel="noopener noreferrer">Thinai</a> · <a href="https://github.com/dojekon/AIPaca" target="_blank" rel="noopener noreferrer">AiPaca</a></p>':''}
+      <form data-study-form="ai"><label>服务地址<input name="href" required type="url" placeholder="${info.url}" value="${escape(config?.href||(type==='cloud'?info.url:''))}"></label>
+      <label>模型名称<input name="model" required value="${escape(config?.model)}" placeholder="${info.model}"></label>
+      ${type!=='ollama'?`<label>${type==='cloud'?'DeepSeek API Key':'运行器令牌（若运行器要求）'}<input type="password" name="key" autocapitalize="none" autocomplete="off" spellcheck="false" placeholder="${hasKey?'本次会话已设置，留空沿用':''}"></label>` : ''}
+      ${hasKey?`<label class="study-check"><input type="checkbox" name="clearKey"> 清除本次会话中的密钥</label>`:''}
+      <label class="study-check"><input name="enabled" type="checkbox" ${config?.enabled?'checked':''}> 提交后使用此连接批改${type==='cloud'?'（题干、评分标准和作答会发送给 DeepSeek）':''}</label>
+      <div class="study-actions"><button type="submit" class="primary">保存并选用</button>${commands('ai-test','测试连接')}</div></form></section>`;
+  }
+  function readAIForm(form){
+    const data=new FormData(form),type=aiMode||A.settings(space()).active;
+    const key=String(data.get('key')||'').trim();
+    if(key.length>512||/[\x00-\x20\x7f]/.test(key))throw Error('密钥格式不正确，请检查是否含空格');
+    return {space:space(),type,href:data.get('href'),model:String(data.get('model')||'').trim(),enabled:data.get('enabled')==='on',key:key||undefined,clearKey:data.get('clearKey')==='on'};
   }
   function stopAI(id){
     if(aiRequest&&(!id||aiRequest.attemptId===id)){
@@ -130,7 +146,7 @@
     const owner=responseFor(d),last=owner?.suggestions?.filter(e=>{try{return e.rubricVersion===currentItem(d).rubricVersion&&A.verify({points:e.points},owner.submit);}catch{return false;}}).sort((a,b)=>a.createdAt-b.createdAt||a.id.localeCompare(b.id)).at(-1);
     const pending=aiRequest?.attemptId===d.attemptId?aiRequest.status:'';
     return `<p data-study-ai-status role="status">${escape(pending||(!last?'可请求 AI 逐题批改。':''))}</p>
-      ${last?`<details open><summary>AI 建议 · ${escape(last.model)}</summary><ul class="study-items">${last.points.map(p=>`<li><strong>${escape(currentItem(d).points.find(x=>x.pointId===p.pointId)?.label)} · ${p.score} 分</strong><p>${escape(p.reason)}</p>${p.evidence?`<blockquote>${escape(p.evidence)}</blockquote>`:''}<small>${p.missing?'有遗漏 ':''}${p.contradiction?'有矛盾 ':''}${p.needsReview?'请复核':''}</small></li>`).join('')}</ul></details>`:''}
+      ${last?`<details open><summary>AI 建议 · ${escape(last.provider)} / ${escape(last.model)}</summary><ul class="study-items">${last.points.map(p=>`<li><strong>${escape(currentItem(d).points.find(x=>x.pointId===p.pointId)?.label)} · ${p.score} 分</strong><p>${escape(p.reason)}</p>${p.evidence?`<blockquote>${escape(p.evidence)}</blockquote>`:''}<small>${p.missing?'有遗漏 ':''}${p.contradiction?'有矛盾 ':''}${p.needsReview?'请复核':''}</small></li>`).join('')}</ul></details>`:''}
       <div class="study-actions">${last?commands('ai-accept:'+last.id,'接受该建议',true)+commands('ai-fill:'+last.id,'用建议填分后修改'):''}${commands('ai-retry',pending||last?'重试批改':'请求批改')}${commands('ai-offline','离线自评')}</div>`;
   }
   function library(kind,items){
@@ -262,7 +278,7 @@
       if(cmd==='home'){await pendingWrite;setView('home');}
       else if(cmd==='ai'){setPanel('ai');}
       else if(cmd==='ai-test'){
-        const form=document.querySelector('[data-study-form=ai]'),cfg={href:form.elements.href.value,model:form.elements.model.value};
+        const form=document.querySelector('[data-study-form=ai]');if(!form.reportValidity())return;const cfg=readAIForm(form);
         await A.test(cfg);say('连接成功，模型已找到。');
       }else if(cmd==='ai-retry'&&d?.phase==='grade'){
         if(d.aiOffline)await updateDraft({...d,aiOffline:false});easyAI(draft());return;
@@ -343,6 +359,7 @@
   }
   function onChange(e){
     const t=e.target;
+    if(t.matches('[data-study-ai-mode]')){aiMode=t.value;say('',true);say('');redraw();return;}
     if(t.matches('[data-study-files]'))run(async()=>{
       if(!t.files.length)return;
       const tables=await I.sheets([...t.files]),kind=model.kind;
@@ -387,7 +404,9 @@
     run(async()=>{
       const d=draft(),item=d&&currentItem(d),type=form.dataset.studyForm,data=new FormData(form);
       if(type==='ai'&&A){
-        model.ai=A.save(space(),{href:data.get('href'),model:data.get('model'),enabled:data.get('enabled')==='on'});say('已保存本机配置。');
+        const cfg=readAIForm(form),prior=A.settings(space()).profiles.cloud;
+        if(cfg.type==='cloud'&&cfg.enabled&&!prior?.enabled&&!confirm('允许将你提交的简答题、得分标准和原始作答发送到 DeepSeek 批改？离线自评始终可用。'))return;
+        model.ai=A.save(space(),cfg);say('已保存本机配置。');
       }else if(type==='history-grade'&&historyEdit){
         const {submit,grade}=historyEdit, latest=model.projection.attempts.get(submit.attemptId)?.status;
         if(latest?.grade?.id!==grade.id||latest.heads.length!==1)throw Error('评分已被另一台设备修改，请重新打开该条记录再修订');

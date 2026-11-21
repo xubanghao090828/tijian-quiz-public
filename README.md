@@ -1,12 +1,22 @@
 # 题间
 
-[下载荣耀 APK 1.32.0](https://github.com/xubanghao090828/tijian-quiz-public/releases/download/v1.32.0/Tijian-Honor-offline-v1.32.0.apk)。已有安装可直接覆盖更新。
+[下载荣耀 APK 1.33.0](https://github.com/xubanghao090828/tijian-quiz-public/releases/download/v1.33.0/Tijian-Honor-offline-v1.33.0.apk)。已有安装可直接覆盖更新。
 
 数控题库刷题网页与荣耀 Android 应用。内置 1,460 道题及解析，可离线刷题，无需登录。
 
 - [打开网页](https://xubanghao090828.github.io/tijian-quiz-public/)
 - [下载 Android 1.25.0 APK](https://github.com/xubanghao090828/tijian-quiz-public/releases/download/v1.25.0/Tijian-Honor-offline-v1.25.0.apk)
 - [版本发布页](https://github.com/xubanghao090828/tijian-quiz-public/releases)
+
+## 1.33.0 三种 AI 批改连接
+
+进入「简答练习 → AI 设置」选择并测试：
+
+- 公网 DeepSeek：使用官方 HTTPS 地址和自己的 API Key。明确同意后才发送作答，Key 只在当前会话使用。
+- 手机本地：在 Thinai 或 AiPaca 启动本地 API 后，按其实际端口填入 `http://127.0.0.1:端口/v1`，并填写运行器显示的模型 ID。题间 APK 不包含模型。
+- 电脑 Ollama：支持电脑本机和局域网地址，沿用旧配置。
+
+逐题结果可核对修改；未配置、超时或断开后仍可离线自评。公网付费调用与荣耀上的独立运行器尚待真机联调。
 
 ## 1.32.0 电脑 Ollama 简答批改
 
