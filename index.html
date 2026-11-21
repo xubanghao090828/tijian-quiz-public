@@ -20,6 +20,7 @@
   <link rel="stylesheet" href="sync-space.css?v=20261118-retry">
   <link rel="stylesheet" href="keyword-settings.css?v=20261118-retry">
   <link rel="stylesheet" href="study/study.css?v=p1">
+  <link rel="stylesheet" href="study/drawer.css?v=entry134">
 </head>
 <body data-view="home">
   <div class="app-shell">
@@ -41,6 +42,20 @@
       <div id="app" aria-live="polite"></div>
     </main>
   </div>
+  <dialog id="study-entry-drawer" class="study-entry-drawer" aria-labelledby="study-entry-title">
+    <div class="study-drawer-panel">
+      <header class="study-drawer-head" data-study-drawer-grip>
+        <small>STUDY / MENU</small>
+        <h2 id="study-entry-title">学习入口</h2>
+        <button type="button" class="study-drawer-close" data-study-drawer-close aria-label="关闭学习入口" autofocus><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+      </header>
+      <nav class="study-drawer-list" aria-label="学习功能">
+        <button type="button" class="study-drawer-entry" data-study-drawer-target="vocab"><i><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 19 5-14 5 14M6 14h6m4 5v-6c0-3 5-3 5 0v6m0-3c-3-2-6 0-5 2 1 1 3 1 5-1"/></svg></i><span><strong>英语背默</strong><small>看中文拼英文 · 看英文写中文</small></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
+        <button type="button" class="study-drawer-entry" data-study-drawer-target="short"><i><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 8h8m-8 4h8m-8 4h5"/></svg></i><span><strong>简答练习</strong><small>输入答案 · 按得分点核对</small></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
+        <button type="button" class="study-drawer-entry" data-study-drawer-target="ai"><i><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="9" cy="6" r="2" fill="#2c3440"/><circle cx="15" cy="12" r="2" fill="#2c3440"/><circle cx="8" cy="18" r="2" fill="#2c3440"/></svg></i><span><strong>AI 设置</strong><small>公网 · 手机本地 · 电脑 Ollama</small></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
+      </nav>
+    </div>
+  </dialog>
   <input id="file-input" type="file" accept=".xlsx,.xls,.csv,.tsv,.json,.txt,application/json" hidden>
   <script src="xlsx.full.min.js"></script>
   <script src="explain.js"></script>
@@ -70,8 +85,9 @@
   <script src="study/backup.js?v=p1"></script>
   <script src="study/sync.js?v=p1"></script>
   <script src="study/ollama.js?v=ai3"></script>
-  <script src="study/view.js?v=ai3"></script>
-  <script src="app.js?v=study-p1"></script>
+  <script src="study/view.js?v=entry134"></script>
+  <script src="study/drawer.js?v=entry134"></script>
+  <script src="app.js?v=entry134"></script>
   <script src="vendor/qrcodegen.js"></script>
   <script src="vendor/jsQR-1.4.0.js"></script>
   <script src="sync-merge.js?v=20261118-retry"></script>

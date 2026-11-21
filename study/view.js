@@ -5,7 +5,7 @@
   const directions={zh2en:'看中文拼英文',en2zh:'看英文写中文'};
   const space=()=>root.TIJIAN_PROFILE.id;
   const escape=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  let aiRequest=null,aiMode=null,historyEdit=null,model=null,serial=0,entry=null,busy=false,pendingWrite=Promise.resolve(),problem='',message='',importer=null;
+  let pendingPanel=null,aiRequest=null,aiMode=null,historyEdit=null,model=null,serial=0,entry=null,busy=false,pendingWrite=Promise.resolve(),problem='',message='',importer=null;
   const op=(table,value,method)=>({table,value,method});
   const draft=()=>model?.drafts.find(d=>d.id===model.kind);
   const commands=(cmd,label,primary=false,disabled=false)=>`<button type="button" class="${primary?'primary':'secondary'}" data-study-do="${cmd}" ${disabled?'disabled':''}>${escape(label)}</button>`;
@@ -38,14 +38,14 @@
   }
   async function mount(kind){
     const el=document.querySelector('[data-study-view]');if(!el)return;
-    if(model?.kind===kind&&model.space===space()&&model.cards){draw(el);if(model.syncOn)syncInBackground();return;}
+    if(model?.kind===kind&&model.space===space()&&model.cards){if(pendingPanel){model.panel=pendingPanel;pendingPanel=null;}draw(el);if(model.syncOn)syncInBackground();return;}
     const request=++serial,spaceId=space();
     problem=message='';importer=null;entry=null;historyEdit=null;aiMode=null;
     el.innerHTML='<p class="card study-pane">正在读取本机学习记录…</p>';
     try{
       await pendingWrite.catch(()=>{});const data=await reload();
       if(request!==serial||spaceId!==space()||!el.isConnected)return;
-      model={...data,kind,space:spaceId,panel:'home',dir:'zh2en'};
+      model={...data,kind,space:spaceId,panel:kind==='short'&&pendingPanel?pendingPanel:'home',dir:'zh2en'};pendingPanel=null;
       model.syncOn=await Y.enabled(spaceId);
       model.ai=A?.load(spaceId)||null;
       await rebuild();if(request===serial&&el.isConnected)draw(el);
@@ -445,5 +445,5 @@
   }
   window.addEventListener('online',()=>{if(document.querySelector('[data-study-view]'))syncInBackground();});
   setInterval(()=>{if(!document.hidden&&document.querySelector('[data-study-view]'))syncInBackground();},30000);
-  root.TijianStudy={mount,flush:()=>pendingWrite.catch(()=>{}),reset(){serial++;model=null;entry=importer=null;},view:kind=>`<div class="study-view" data-study-view="${kind}"></div>`};
+  root.TijianStudy={mount,preparePanel(id){pendingPanel=id==='ai'?'ai':null;if(!pendingPanel&&model)model.panel='home';},flush:()=>pendingWrite.catch(()=>{}),reset(){serial++;model=null;entry=importer=null;},view:kind=>`<div class="study-view" data-study-view="${kind}" tabindex="-1"></div>`};
 })(globalThis);
