@@ -1,11 +1,11 @@
 (function(root){
   'use strict';
-  const C=root.TijianStudyCore,V=root.TijianStudySchema,S=root.TijianStudyStore,Y=root.TijianStudySync,I=root.TijianStudyImport;
+  const C=root.TijianStudyCore,V=root.TijianStudySchema,S=root.TijianStudyStore,Y=root.TijianStudySync,A=root.TijianStudyAI,I=root.TijianStudyImport;
   const labels={vocab:'英语背默',short:'简答练习'};
   const directions={zh2en:'看中文拼英文',en2zh:'看英文写中文'};
   const space=()=>root.TIJIAN_PROFILE.id;
   const escape=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  let model=null,serial=0,entry=null,busy=false,pendingWrite=Promise.resolve(),problem='',message='',importer=null;
+  let aiRequest=null,historyEdit=null,model=null,serial=0,entry=null,busy=false,pendingWrite=Promise.resolve(),problem='',message='',importer=null;
   const op=(table,value,method)=>({table,value,method});
   const draft=()=>model?.drafts.find(d=>d.id===model.kind);
   const commands=(cmd,label,primary=false,disabled=false)=>`<button type="button" class="${primary?'primary':'secondary'}" data-study-do="${cmd}" ${disabled?'disabled':''}>${escape(label)}</button>`;
@@ -38,15 +38,16 @@
   }
   async function mount(kind){
     const el=document.querySelector('[data-study-view]');if(!el)return;
-    if(model?.kind===kind&&model.space===space()&&model.cards){draw(el);return;}
+    if(model?.kind===kind&&model.space===space()&&model.cards){draw(el);if(model.syncOn)syncInBackground();return;}
     const request=++serial,spaceId=space();
-    problem=message='';importer=null;entry=null;
+    problem=message='';importer=null;entry=null;historyEdit=null;
     el.innerHTML='<p class="card study-pane">正在读取本机学习记录…</p>';
     try{
       await pendingWrite.catch(()=>{});const data=await reload();
       if(request!==serial||spaceId!==space()||!el.isConnected)return;
       model={...data,kind,space:spaceId,panel:'home',dir:'zh2en'};
       model.syncOn=await Y.enabled(spaceId);
+      model.ai=A?.load(spaceId)||null;
       await rebuild();if(request===serial&&el.isConnected)draw(el);
       if(model.syncOn)syncInBackground();
     }catch(e){if(request===serial&&el.isConnected)el.innerHTML=`<section class="card study-pane" role="alert"><p>无法读取本机学习记录：${escape(e.message)}</p><button data-go="home" class="secondary">返回总览</button></section>`,el.querySelector('button').onclick=()=>setView('home');}
@@ -71,9 +72,10 @@
   function show(el){
     const {kind,panel,dir}=model,d=draft(), list=model.content.filter(i=>i.module===kind);
     const heading=`<header class="study-heading"><div><div class="eyebrow">${kind==='vocab'?'VOCABULARY':'SHORT ANSWER'}</div><h1>${labels[kind]}</h1></div>${commands('home','返回总览')}</header>`;
-    const navigation=`<div class="study-actions">${commands('landing','练习',panel==='home')}${commands('library',kind==='vocab'?'词表管理':'简答题库',panel==='library')}${commands('history','作答记录',panel==='history')}</div>`;
+    const navigation=`<div class="study-actions">${commands('landing','练习',panel==='home')}${commands('library',kind==='vocab'?'词表管理':'简答题库',panel==='library')}${commands('history','作答记录',panel==='history')}${kind==='short'&&A?commands('ai','AI 设置',panel==='ai'):''}</div>`;
     const banner=`<p role="alert" class="study-error" data-study-error${problem?'':' hidden'}>${escape(problem)}</p><p role="status" class="study-status" data-study-status${message?'':' hidden'}>${escape(message)}</p>`;
     if(panel==='practice'&&d)return heading+banner+exercise(d);
+    if(panel==='ai')return heading+navigation+banner+aiConfig();
     if(panel==='library')return heading+navigation+banner+library(kind,list);
     if(panel==='history')return heading+navigation+banner+history(kind);
     const newCount=queueSize(kind,dir,'new'),dueCount=queueSize(kind,dir,'due');
@@ -84,6 +86,52 @@
       ${d?`<p>已保存第 ${d.index+1} / ${d.queue.length} ${kind==='vocab'?'词':'题'}的进度${d.direction?' · '+directions[d.direction]:''}。</p>${commands('end','结束本轮')}`:''}
       <details class="study-sync"><summary>设备同步</summary><p>新作答可通过原有配对同步，包含原始输入和评分。题库仍通过导入、备份或配对合并。</p><div class="study-actions">${commands('sync-toggle',model.syncOn?'关闭新模块同步':'启用新模块同步')}${model.syncOn?commands('sync-now','立即同步'):''}</div><p data-study-sync-status>${escape(model.syncStatus||'')}</p></details>
       ${!list.length?`<p>先导入自己的${kind==='vocab'?'词表':'简答题库'}，或者用示例表体验。</p>${commands('library','前往导入',true)}`:''}</section>`;
+  }
+  function aiConfig(){
+    const config=model.ai;
+    return `<section class="card study-pane"><h2>电脑 Ollama</h2><p>在电脑运行模型。打开本页的设备须能访问该地址；从手机连接时填写电脑的局域网地址。未启用或连不上时可直接自评。</p>
+      <details><summary>连接不成功？</summary><p>电脑 Ollama 须允许当前网页来源 <code>${escape(location.origin)}</code>。可在 Ollama 环境设置里加入该来源并重启。手机访问时还需电脑监听局域网，且手机、电脑在同一网络。不要将 Ollama 端口暴露到公网。</p></details>
+      <form data-study-form="ai"><label>服务地址<input name="href" required type="url" placeholder="http://127.0.0.1:11434" value="${escape(config?.href)}"></label>
+      <label>模型名称<input name="model" required value="${escape(config?.model)}" placeholder="例如 qwen3.5:9b"></label>
+      <label class="study-check"><input name="enabled" type="checkbox" ${config?.enabled?'checked':''}> 提交简答后把该题和答案发送到此 Ollama 批改</label>
+      <div class="study-actions"><button type="submit" class="primary">保存配置</button>${commands('ai-test','测试连接')}</div></form></section>`;
+  }
+  function stopAI(id){
+    if(aiRequest&&(!id||aiRequest.attemptId===id)){
+      clearTimeout(aiRequest.timer);aiRequest.controller.abort();aiRequest=null;
+    }
+  }
+  function aiStatus(){const n=document.querySelector('[data-study-ai-status]');if(n)n.textContent=aiRequest?.status||'';}
+  function easyAI(d){
+    const attempt=responseFor(d)?.submit,config=model.ai;
+    if(!A||!attempt||!config?.enabled||d.revising)return;
+    stopAI();const request={attemptId:d.attemptId,id:C.uuid(),controller:new AbortController(),status:'AI 正在批改，可先核对得分点。'};
+    aiRequest=request;
+    request.timer=setTimeout(()=>{if(aiRequest!==request)return;request.status='已超过 5 秒，可继续等待、离线自评或重试。';aiStatus();},5000);
+    const owner=model,signal=AbortSignal.any([request.controller.signal,AbortSignal.timeout(60000)]);
+    void A.suggest(config,request.id,attempt,signal).then(async result=>{
+      const live=draft(),grade=model?.projection.attempts.get(request.attemptId)?.status?.grade;
+      if(aiRequest!==request||owner!==model||live?.attemptId!==request.attemptId||live.phase!=='grade'||live.revising||grade)return;
+      const event=makeEvent(live,'suggested',result);
+      await write([op('events',event,'add')]);
+      if(owner!==model)return;
+      model.events.push(event);await rebuild();syncInBackground();
+      if(aiRequest===request){request.status='AI 建议已到，可一键接受或调整分项。';renderAIPanel(live);}
+    }).catch(e=>{
+      if(aiRequest!==request)return;
+      request.status=(signal.aborted?'本次批改已超时。':e.message)+' 可离线自评或重试。';renderAIPanel(d);
+    }).finally(()=>clearTimeout(request.timer));
+    renderAIPanel(d);
+  }
+  function renderAIPanel(d){const n=document.querySelector('[data-study-ai-panel]');if(n&&draft()?.attemptId===d.attemptId)n.innerHTML=aiPanel(d);}
+  function aiPanel(d){
+    if(!A||!model.ai?.enabled||d.revising)return '';
+    if(d.aiOffline)return commands('ai-retry','重新启用 AI 批改');
+    const owner=responseFor(d),last=owner?.suggestions?.filter(e=>{try{return e.rubricVersion===currentItem(d).rubricVersion&&A.verify({points:e.points},owner.submit);}catch{return false;}}).sort((a,b)=>a.createdAt-b.createdAt||a.id.localeCompare(b.id)).at(-1);
+    const pending=aiRequest?.attemptId===d.attemptId?aiRequest.status:'';
+    return `<p data-study-ai-status role="status">${escape(pending||(!last?'可请求 AI 逐题批改。':''))}</p>
+      ${last?`<details open><summary>AI 建议 · ${escape(last.model)}</summary><ul class="study-items">${last.points.map(p=>`<li><strong>${escape(currentItem(d).points.find(x=>x.pointId===p.pointId)?.label)} · ${p.score} 分</strong><p>${escape(p.reason)}</p>${p.evidence?`<blockquote>${escape(p.evidence)}</blockquote>`:''}<small>${p.missing?'有遗漏 ':''}${p.contradiction?'有矛盾 ':''}${p.needsReview?'请复核':''}</small></li>`).join('')}</ul></details>`:''}
+      <div class="study-actions">${last?commands('ai-accept:'+last.id,'接受该建议',true)+commands('ai-fill:'+last.id,'用建议填分后修改'):''}${commands('ai-retry',pending||last?'重试批改':'请求批改')}${commands('ai-offline','离线自评')}</div>`;
   }
   function library(kind,items){
     const short=kind==='short', options=importer&&importer.kind===kind?importer:null;
@@ -164,12 +212,12 @@
     if(i>=b.length)return '<p>提示：末尾多了字符。</p>';
     return `<p>从第 ${i+1} 个字符开始与标准拼写不同。</p>`;
   }
-  function gradingForm(item,submitted,d){
+  function gradingForm(item,submitted,d,editingHistory=false){
     const matches=new Map(C.keywordHints(item,submitted.raw).map(v=>[v.pointId,v.matches]));
     return `<h2>${escape(item.stem)}</h2><p>你的原答案</p><blockquote>${escape(submitted.raw)}</blockquote>
     <details><summary>对照参考答案</summary><blockquote>${escape(item.reference)}</blockquote></details>
     <p class="study-note">词语匹配只提示可能覆盖的内容。请核对句意、否定和得分条件，再填各项分数。</p>
-    <form data-study-form="grade">${item.points.map(p=>`<fieldset><legend>${escape(p.label)}${p.critical?' · 关键点':''}</legend>
+    <div data-study-ai-panel>${editingHistory?'':aiPanel(d)}</div><form data-study-form="${editingHistory?'history-grade':'grade'}">${item.points.map(p=>`<fieldset><legend>${escape(p.label)}${p.critical?' · 关键点':''}</legend>
       <p>${matches.get(p.pointId).length?'可能相关：'+escape(matches.get(p.pointId).join('、')):'没有直接匹配，请人工判断。'}</p>
       ${p.conditions?`<p>${escape(p.conditions)}</p>`:''}${p.partialRule?`<p>${escape(p.partialRule)}</p>`:''}
       <label>得分（满分 ${p.maxScore}）<input name="point" data-point="${escape(p.pointId)}" type="number" min="0" max="${p.maxScore}" step=".01" required value="${escape(d.scores?.[p.pointId])}"></label></fieldset>`).join('')}
@@ -178,7 +226,7 @@
   }
   function history(kind){
     const list=[...model.projection.attempts.values()].filter(e=>e.submit?.module===kind).sort((a,b)=>b.submit.answeredAt-a.submit.answeredAt);
-    return `<section class="card study-pane"><h2>作答历史 · ${list.length}</h2>${list.length?`<p>按时间由新到旧显示最近 60 条，全部练习均保留在本机及备份中。</p>${list.slice(0,60).map(a=>`<details class="study-history"><summary>${escape(kind==='vocab'?a.submit.snapshot.en:a.submit.snapshot.stem)} · ${escape(new Date(a.submit.answeredAt).toLocaleString('zh-CN'))}</summary><p>原作答：${escape(a.submit.raw)}</p>${!model.content.some(x=>x.id===a.submit.itemId)?`<p>待关联题库：可以从这次作答的参考快照恢复该词或题。</p>${commands('link-item:'+a.submit.attemptId,'恢复这条题库内容')}`:''}${a.status?.heads?.length>1?`<p>评分有冲突，保留了两边的记录。${a.status.grade?'复习计划暂按共同的上一版。':'解决后才计入复习。'}</p>${kind==='short'?a.status.heads.map(h=>`<div class="study-note"><p>${escape(new Date(h.createdAt).toLocaleString('zh-CN'))} · ${escape(h.deviceId.slice(-6))} · ${h.score}/${h.maxScore}</p>${a.submit.snapshot.points.map(p=>`<p>${escape(p.label)}：${h.scores[p.pointId]}/${p.maxScore}</p>`).join('')}${commands('resolve:'+h.id,'采用这份评分')}</div>`).join(''):''}`:''}${a.status?.grade?.score!==undefined?`<p>得分：${a.status.grade.score}/${a.status.grade.maxScore} · 评分标准 v${a.submit.snapshot.rubricVersion}</p>${a.submit.snapshot.points.map(p=>`<p>${escape(p.label)}：${a.status.grade.scores[p.pointId]}/${p.maxScore}</p>`).join('')}`:''}<p>记忆评级：${C.ratingText[a.submit.rating??a.status?.grade?.rating]||'待确认'}</p>${a.corrections.map(c=>`<p>订正：${escape(c.raw)}</p>`).join('')}</details>`).join('')}`:'<p>还没有作答记录。</p>'}</section>`;
+    return `<section class="card study-pane"><h2>作答历史 · ${list.length}</h2>${list.length?`<p>按时间由新到旧显示最近 60 条，全部练习均保留在本机及备份中。</p>${list.slice(0,60).map(a=>`<details class="study-history"><summary>${escape(kind==='vocab'?a.submit.snapshot.en:a.submit.snapshot.stem)} · ${escape(new Date(a.submit.answeredAt).toLocaleString('zh-CN'))}</summary><p>原作答：${escape(a.submit.raw)}</p>${!model.content.some(x=>x.id===a.submit.itemId)?`<p>待关联题库：可以从这次作答的参考快照恢复该词或题。</p>${commands('link-item:'+a.submit.attemptId,'恢复这条题库内容')}`:''}${a.status?.heads?.length>1?`<p>评分有冲突，保留了两边的记录。${a.status.grade?'复习计划暂按共同的上一版。':'解决后才计入复习。'}</p>${kind==='short'?a.status.heads.map(h=>`<div class="study-note"><p>${escape(new Date(h.createdAt).toLocaleString('zh-CN'))} · ${escape(h.deviceId.slice(-6))} · ${h.score}/${h.maxScore}</p>${a.submit.snapshot.points.map(p=>`<p>${escape(p.label)}：${h.scores[p.pointId]}/${p.maxScore}</p>`).join('')}${commands('resolve:'+h.id,'采用这份评分')}</div>`).join(''):''}`:''}${a.status?.grade?.score!==undefined?`<p>得分：${a.status.grade.score}/${a.status.grade.maxScore} · 评分标准 v${a.submit.snapshot.rubricVersion}</p>${a.submit.snapshot.points.map(p=>`<p>${escape(p.label)}：${a.status.grade.scores[p.pointId]}/${p.maxScore}</p>`).join('')}`:''}<p>记忆评级：${C.ratingText[a.submit.rating??a.status?.grade?.rating]||'待确认'}</p>${a.corrections.map(c=>`<p>订正：${escape(c.raw)}</p>`).join('')}${kind==='short'&&a.status.grade&&a.status.heads.length===1?commands('history-revise:'+a.submit.attemptId,'修订这次评分'):''}</details>`).join('')}`:'<p>还没有作答记录。</p>'}</section>`+(historyEdit?`<section class="card study-pane" data-study-history-edit><h2>保留原作答，修订评分</h2>${gradingForm(historyEdit.submit.snapshot,historyEdit.submit,{scores:historyEdit.grade.scores,manual:historyEdit.grade.manual,revising:true},true)}${commands('history-cancel','取消修订')}</section>`:'');
   }
   function draw(el){el.innerHTML=show(el);el.onclick=onClick;el.onchange=onChange;el.oninput=onInput;el.onsubmit=onSubmit;el.onkeydown=e=>{if(e.key==='Enter'&&(e.isComposing||e.keyCode===229))e.preventDefault();};}
   function say(text,error=false){if(error)problem=text;else message=text;const node=document.querySelector(error?'[data-study-error]':'[data-study-status]');if(node){node.textContent=text;node.hidden=!text;}}
@@ -194,11 +242,11 @@
     if(!V.event(event))throw Error('作答内容超出保存范围或格式不完整，请检查后重试');
     return event;
   }
-  function setPanel(value){model.panel=value;message=problem='';redraw();if(value!=='practice')window.scrollTo(0,0);}
+  function setPanel(value){if(value!=='history')historyEdit=null;model.panel=value;message=problem='';redraw();if(value!=='practice')window.scrollTo(0,0);}
   function makeDraft(d,index,items){
     const item=items?.find(i=>i.id===d.queue[index])||model.content.find(i=>i.id===d.queue[index]);
     if(!item)throw Error('题库缺少本轮下一项内容；原作答记录仍保留');
-    return {...d,index,item,attemptId:C.uuid(),input:'',correction:'',scores:{},manual:null,revising:false,hinted:false,showHint:false,hideReference:false,phase:d.id==='vocab'&&d.queueKind==='new'?'learn':'answer'};
+    return {...d,index,item,attemptId:C.uuid(),input:'',correction:'',scores:{},manual:null,revising:false,hinted:false,showHint:false,hideReference:false,aiOffline:false,phase:d.id==='vocab'&&d.queueKind==='new'?'learn':'answer'};
   }
   async function finishDraft(d){
     await write([{table:'drafts',method:'delete',id:d.id}]);model.drafts=model.drafts.filter(x=>x.id!==d.id);setPanel('home');
@@ -212,10 +260,33 @@
     run(async()=>{
       const d=draft();
       if(cmd==='home'){await pendingWrite;setView('home');}
+      else if(cmd==='ai'){setPanel('ai');}
+      else if(cmd==='ai-test'){
+        const form=document.querySelector('[data-study-form=ai]'),cfg={href:form.elements.href.value,model:form.elements.model.value};
+        await A.test(cfg);say('连接成功，模型已找到。');
+      }else if(cmd==='ai-retry'&&d?.phase==='grade'){
+        if(d.aiOffline)await updateDraft({...d,aiOffline:false});easyAI(draft());return;
+      }else if(cmd==='ai-offline'&&d?.phase==='grade'){
+        stopAI(d.attemptId);await updateDraft({...d,aiOffline:true});renderAIPanel(d);return;
+      }else if((cmd==='ai-accept'||cmd==='ai-fill')&&d?.phase==='grade'){
+        const a=responseFor(d),proposal=a?.suggestions.find(x=>x.id===arg);
+        if(!proposal||d.revising||proposal.rubricVersion!==currentItem(d).rubricVersion)return;
+        const scores=Object.fromEntries(A.verify({points:proposal.points},a.submit).map(x=>[x.pointId,x.score]));
+        stopAI(d.attemptId);
+        if(cmd==='ai-fill')await updateDraft({...d,scores});
+        else await confirmGrade(d,currentItem(d),scores,null);
+        redraw();return;
+      }
       else if(cmd==='sync-toggle'){
         if(!model.syncOn&&!confirm('开启后，新模块的原始作答、评分和当前题目的参考快照会保存到本学习空间的同步服务。继续？'))return;
         model.syncOn=!model.syncOn;await Y.setEnabled(space(),model.syncOn);model.syncStatus='';redraw();if(model.syncOn)syncInBackground();
       }else if(cmd==='sync-now'){syncInBackground();}
+      else if(cmd==='history-revise'){
+        const at=model.projection.attempts.get(arg);
+        if(at?.submit?.module!=='short'||!at.status.grade||at.status.heads.length!==1)return;
+        historyEdit={submit:at.submit,grade:at.status.grade};redraw();
+        document.querySelector('[data-study-history-edit]')?.scrollIntoView({block:'start'});
+      }else if(cmd==='history-cancel'){historyEdit=null;redraw();}
       else if(cmd==='resolve'){
         const at=[...model.projection.attempts.values()].find(a=>a.status?.heads?.some(h=>h.id===arg)),heads=at?.status.heads;
         if(!heads||heads.length<2||heads.length>20||at.submit.module!=='short')return;
@@ -305,11 +376,27 @@
       return {pointId:p.dataset.rubricPoint,label:val('label'),maxScore:val('maxScore'),critical:p.querySelector('[name="critical"]').checked,aliases:val('aliases').split('|').map(s=>s.trim()).filter(Boolean),conditions:val('conditions'),partialRule:val('partialRule')};
     });
   }
+  async function confirmGrade(d,item,inputs,manual){
+    const graded=C.gradeShort(item,inputs,d.hinted,manual),at=responseFor(d);
+    const parents=d.revising?[at.status.grade.id]:[];
+    stopAI(d.attemptId);
+    await updateDraft({...d,scores:graded.scores,manual,revising:false,phase:'result'},[op('events',makeEvent(d,d.revising?'revised':'confirmed',{parents,...graded,manual,rubricVersion:item.rubricVersion}),'add')]);
+  }
   function onSubmit(e){
     const form=e.target;if(!form.matches('[data-study-form]'))return;e.preventDefault();
     run(async()=>{
       const d=draft(),item=d&&currentItem(d),type=form.dataset.studyForm,data=new FormData(form);
-      if(type==='rubric'&&entry){
+      if(type==='ai'&&A){
+        model.ai=A.save(space(),{href:data.get('href'),model:data.get('model'),enabled:data.get('enabled')==='on'});say('已保存本机配置。');
+      }else if(type==='history-grade'&&historyEdit){
+        const {submit,grade}=historyEdit, latest=model.projection.attempts.get(submit.attemptId)?.status;
+        if(latest?.grade?.id!==grade.id||latest.heads.length!==1)throw Error('评分已被另一台设备修改，请重新打开该条记录再修订');
+        const inputs=Object.fromEntries([...form.querySelectorAll('[data-point]')].map(x=>[x.dataset.point,x.value]));
+        const manual=data.get('manual')?Number(data.get('manual')):null,graded=C.gradeShort(submit.snapshot,inputs,submit.hinted,manual);
+        const event=makeEvent({id:'short',attemptId:submit.attemptId},'revised',{parents:[grade.id],...graded,manual,rubricVersion:submit.snapshot.rubricVersion});
+        await write([op('events',event,'add')]);model.events.push(event);await rebuild();syncInBackground();
+        historyEdit=null;message='已修订原评分和复习计划，此次作答仍只计一次。';
+      }else if(type==='rubric'&&entry){
         captureRubric();
         if(entry.points.some(p=>!p.label||p.maxScore===''||!Number.isFinite(+p.maxScore)||+p.maxScore<0))throw Error('请填写全部得分点名称及分值');
         const points=entry.points.map(p=>({...p,maxScore:+p.maxScore})),reference=entry.reference.trim(),ready=!!(reference&&points.some(p=>p.maxScore>0));
@@ -324,11 +411,11 @@
         if(now<last)throw Error('设备时间早于上次作答，请校准时间后提交。草稿已保留。');
         const submitted=makeEvent(d,'submitted',{itemId:item.id,direction:d.direction,raw,snapshot:item,rating,answeredAt:now,hinted:d.hinted});
         await updateDraft({...d,input:raw,item,phase:auto?'result':'grade'},[op('events',submitted,'add')]);
+        if(d.id==='short')easyAI(draft());
       }else if(type==='grade'&&d?.phase==='grade'&&d.id==='short'){
         const inputs=Object.fromEntries([...form.querySelectorAll('[data-point]')].map(x=>[x.dataset.point,x.value]));
-        const manual=data.get('manual')?Number(data.get('manual')):null,graded=C.gradeShort(item,inputs,d.hinted,manual),at=responseFor(d);
-        const parents=d.revising?[at.status.grade.id]:[];
-        await updateDraft({...d,scores:graded.scores,manual,revising:false,phase:'result'},[op('events',makeEvent(d,d.revising?'revised':'confirmed',{parents,...graded,manual,rubricVersion:item.rubricVersion}),'add')]);
+        const manual=data.get('manual')?Number(data.get('manual')):null;
+        await confirmGrade(d,item,inputs,manual);
       }else if(type==='correction'&&d?.phase==='result'){
         const raw=String(data.get('correction')||'').trim();if(!raw)throw Error('先输入订正内容');
         if(d.id==='vocab'&&d.direction==='zh2en'&&!C.checkSpelling(item,raw))throw Error('拼写还不匹配。可以再看参考答案，然后重新默写。');

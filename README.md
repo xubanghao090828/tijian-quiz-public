@@ -1,12 +1,20 @@
 # 题间
 
-[下载荣耀 APK 1.31.0](https://github.com/xubanghao090828/tijian-quiz-public/releases/download/v1.31.0/Tijian-Honor-offline-v1.31.0.apk)。已有安装可直接覆盖更新。
+[下载荣耀 APK 1.32.0](https://github.com/xubanghao090828/tijian-quiz-public/releases/download/v1.32.0/Tijian-Honor-offline-v1.32.0.apk)。已有安装可直接覆盖更新。
 
 数控题库刷题网页与荣耀 Android 应用。内置 1,460 道题及解析，可离线刷题，无需登录。
 
 - [打开网页](https://xubanghao090828.github.io/tijian-quiz-public/)
 - [下载 Android 1.25.0 APK](https://github.com/xubanghao090828/tijian-quiz-public/releases/download/v1.25.0/Tijian-Honor-offline-v1.25.0.apk)
 - [版本发布页](https://github.com/xubanghao090828/tijian-quiz-public/releases)
+
+## 1.32.0 电脑 Ollama 简答批改
+
+- 简答练习 → AI 设置可以保存、测试电脑 Ollama 地址与模型。启用后提交时先在本机保存，在同一题查看分项建议与原文证据，可直接接受或填分后调整。
+- 等待超过约 5 秒可切离线自评或重试。真实推理时间取决于模型是否已加载；成绩确认后不会被迟到结果覆盖。
+- 可从作答历史修订原评分，FSRS 始终按原作答时间计算。纯离线练习仍完整可用。
+
+网页版需要 Ollama 允许当前站点来源；可将当前站点加入 `OLLAMA_ORIGINS` 后重启 Ollama。手机填写电脑局域网地址，需电脑监听该地址并允许可信本地设备访问。不同浏览器和荣耀 WebView 的局域网访问限制可能不同。
 
 ## 1.31.0 英语背默和简答练习
 
