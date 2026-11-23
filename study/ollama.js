@@ -60,8 +60,13 @@
   }
   async function bridgeRequest(connection,path,body,key,signal){
     signal?.throwIfAborted();
-    const plugin=root.Capacitor.registerPlugin('QuizLocalAI'),id=crypto.randomUUID();
-    const cancel=()=>{void plugin.cancel({id}).catch(()=>{});};
+    // Buildless Capacitor injects native plugins into Plugins; registerPlugin
+    // is supplied by @capacitor/core and is absent in the packaged WebView.
+    const cap=root.Capacitor;
+    const plugin=cap.Plugins?.QuizLocalAI??cap.registerPlugin?.('QuizLocalAI');
+    if(typeof plugin?.request!=='function')throw Object.assign(new Error('Missing native plugin'),{code:'UNIMPLEMENTED'});
+    const id=crypto.randomUUID();
+    const cancel=()=>{Promise.resolve().then(()=>plugin.cancel?.({id})).catch(()=>{});};
     signal?.addEventListener('abort',cancel,{once:true});
     try{
       const response=await plugin.request({id,base:connection.href,route:path,body:body?JSON.stringify(body):null,key:key||''});

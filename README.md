@@ -1,12 +1,16 @@
 # 题间
 
-[下载荣耀 APK 1.36.0](https://github.com/xubanghao090828/tijian-quiz-public/releases/download/v1.36.0/Tijian-Honor-offline-v1.36.0.apk)。已有安装可直接覆盖更新。
+[下载荣耀 APK 1.37.0](https://github.com/xubanghao090828/tijian-quiz-public/releases/download/v1.37.0/Tijian-Honor-offline-v1.37.0.apk)。已有安装可直接覆盖更新。
 
 数控题库刷题网页与荣耀 Android 应用。内置 1,460 道题及解析，可离线刷题，无需登录。
 
 - [打开网页](https://xubanghao090828.github.io/tijian-quiz-public/)
 - [下载 Android 1.25.0 APK](https://github.com/xubanghao090828/tijian-quiz-public/releases/download/v1.25.0/Tijian-Honor-offline-v1.25.0.apk)
 - [版本发布页](https://github.com/xubanghao090828/tijian-quiz-public/releases)
+
+## 1.37.0 荣耀本地 AI 连接修复
+
+修正题间 APK 调用安卓本地 AI 的方式。旧版可能在发出请求前就报「未能收到手机本地服务的 HTTP 响应」。更新后可测试并自动读取 AiPaca 的模型 ID；直接覆盖安装，保留记录。
 
 ## 1.36.0 手机本地 AI 连接
 
