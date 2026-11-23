@@ -92,7 +92,7 @@
     const info={
       ollama:{url:'http://127.0.0.1:11434',model:'qwen3.5:9b',desc:'电脑上启动 Ollama。手机连接电脑时，填写电脑的局域网 IP，不能填手机自己的 127.0.0.1。'},
       cloud:{url:'https://api.deepseek.com',model:'deepseek-flash',desc:'使用自己的 DeepSeek API Key。密钥只保存在本次应用会话，关闭或刷新后需重新输入。联网批改可能产生服务费用。'},
-      phone:{url:'http://127.0.0.1:11434/v1',model:'运行器中显示的模型 ID',desc:'在荣耀上单独打开 Thinai 或 AiPaca，加载模型并启动本机 API，再按运行器实际端口填写。推荐在题间 APK 里使用。'}
+      phone:{url:'http://127.0.0.1:11434/v1',model:'可留空，测试连接时读取',desc:'在荣耀上单独打开 Thinai 或 AiPaca，加载模型并启动本机 API，再按运行器实际端口填写。推荐在题间 APK 里使用。'}
     }[type];
     const hasKey=config&&A.hasKey(space(),config);
     return `<section class="card study-pane"><h2>AI 连接</h2><p>一次只使用选中的连接。可随时改用本题离线自评。</p>
@@ -100,7 +100,7 @@
       <p>${escape(info.desc)}</p>
       ${type==='ollama'?`<details><summary>电脑连接帮助</summary><p>使用网页时，电脑 Ollama 需允许当前来源 <code>${escape(location.origin)}</code>。手机连电脑还需同一局域网和允许的监听地址。</p></details>`:type==='phone'?'<p><a href="https://github.com/Abhinivesh2729/Thinai" target="_blank" rel="noopener noreferrer">Thinai</a> · <a href="https://github.com/dojekon/AIPaca" target="_blank" rel="noopener noreferrer">AiPaca</a></p>':''}
       <form data-study-form="ai"><label>服务地址<input name="href" required type="url" placeholder="${info.url}" value="${escape(config?.href||(type==='cloud'?info.url:''))}"></label>
-      <label>模型名称<input name="model" required value="${escape(config?.model)}" placeholder="${info.model}"></label>
+      <label>模型名称<input name="model" ${type==='phone'?'maxlength="1024"':'required maxlength="100"'} value="${escape(config?.model)}" placeholder="${info.model}"></label>
       ${type!=='ollama'?`<label>${type==='cloud'?'DeepSeek API Key':'运行器令牌（若运行器要求）'}<input type="password" name="key" autocapitalize="none" autocomplete="off" spellcheck="false" placeholder="${hasKey?'本次会话已设置，留空沿用':''}"></label>` : ''}
       ${hasKey?`<label class="study-check"><input type="checkbox" name="clearKey"> 清除本次会话中的密钥</label>`:''}
       <label class="study-check"><input name="enabled" type="checkbox" ${config?.enabled?'checked':''}> 提交后使用此连接批改${type==='cloud'?'（题干、评分标准和作答会发送给 DeepSeek）':''}</label>
@@ -279,7 +279,14 @@
       else if(cmd==='ai'){setPanel('ai');}
       else if(cmd==='ai-test'){
         const form=document.querySelector('[data-study-form=ai]');if(!form.reportValidity())return;const cfg=readAIForm(form);
-        await A.test(cfg);say('连接成功，模型已找到。');
+        say('正在测试连接…');
+        try{
+          if(cfg.type==='phone'){
+            const id=await A.detect(cfg);
+            form.elements.model.value=id;
+            say('连接成功，已填入本机模型 ID。请点「保存并选用」。');
+          }else{await A.test(cfg);say('连接成功，模型已找到。');}
+        }catch(error){say('');throw error;}
       }else if(cmd==='ai-retry'&&d?.phase==='grade'){
         if(d.aiOffline)await updateDraft({...d,aiOffline:false});easyAI(draft());return;
       }else if(cmd==='ai-offline'&&d?.phase==='grade'){
